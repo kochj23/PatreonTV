@@ -25,6 +25,12 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PatreonTV needs to connect to the PatreonTV Relay server running on your Mac to authenticate with Patreon.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_patreontv._tcp</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string></string>
 </dict>

@@ -54,7 +54,7 @@ struct FeedView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 40) {
+                LazyVStack(spacing: 60) {
                     if viewModel.isLoadingFeed && viewModel.feedPosts.isEmpty {
                         ProgressView("Loading feed...")
                             .padding(.top, 100)
@@ -62,10 +62,10 @@ struct FeedView: View {
                         emptyStateView
                     } else {
                         ForEach(viewModel.feedPosts) { post in
-                            PostCardView(post: post)
-                                .onTapGesture {
-                                    selectedPost = post
-                                }
+                            PostCardView(post: post) {
+                                selectedPost = post
+                            }
+                            .frame(maxWidth: 900)
                         }
 
                         // Load more button

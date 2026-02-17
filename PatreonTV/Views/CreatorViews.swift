@@ -122,12 +122,12 @@ struct CreatorDetailView: View {
                     } else if viewModel.posts.isEmpty {
                         emptyStateView
                     } else {
-                        LazyVStack(spacing: 30) {
+                        LazyVStack(spacing: 60) {
                             ForEach(viewModel.posts) { post in
-                                PostCardView(post: post)
-                                    .onTapGesture {
-                                        selectedPost = post
-                                    }
+                                PostCardView(post: post) {
+                                    selectedPost = post
+                                }
+                                .frame(maxWidth: 900)
                             }
 
                             // Load more

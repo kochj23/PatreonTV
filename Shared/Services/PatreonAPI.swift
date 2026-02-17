@@ -179,7 +179,7 @@ class PatreonAPI {
 
     /// Fetch the user's home feed (posts from creators they support)
     func fetchHomeFeed(cursor: String? = nil, limit: Int = 20) async throws -> (posts: [PatreonPost], nextCursor: String?) {
-        var urlString = "\(apiBaseURL)/stream?include=user,campaign,attachments_media&fields[post]=title,content,teaser,published_at,post_type,image,thumbnail_url,url,embed_url,is_paid,like_count,comment_count&fields[campaign]=name,avatar_photo_url,url&page[count]=\(limit)"
+        var urlString = "\(apiBaseURL)/stream?include=user,campaign,attachments_media,post_file&fields[post]=title,content,teaser,published_at,post_type,image,thumbnail_url,url,embed_url,is_paid,like_count,comment_count,post_file&fields[campaign]=name,avatar_photo_url,url&fields[media]=download_url,image_urls,media_type,file_name&page[count]=\(limit)"
 
         if let cursor = cursor {
             urlString += "&page[cursor]=\(cursor)"
@@ -243,10 +243,22 @@ class PatreonAPI {
             struct PostRelationships: Codable {
                 let campaign: RelationshipData?
                 let user: RelationshipData?
+                let postFile: RelationshipData?
+                let attachmentsMedia: RelationshipList?
+
+                enum CodingKeys: String, CodingKey {
+                    case campaign, user
+                    case postFile = "post_file"
+                    case attachmentsMedia = "attachments_media"
+                }
             }
 
             struct RelationshipData: Codable {
                 let data: RelationshipItem?
+            }
+
+            struct RelationshipList: Codable {
+                let data: [RelationshipItem]?
             }
 
             struct RelationshipItem: Codable {
@@ -277,9 +289,11 @@ class PatreonAPI {
 
         // Build campaign lookup from included items
         var campaignLookup: [String: PatreonCampaign] = [:]
+        var mediaLookup: [String: String] = [:]  // media ID -> download_url
+
         if let included = response.included {
-            for item in included where item.type == "campaign" {
-                if let attrs = item.attributes {
+            for item in included {
+                if item.type == "campaign", let attrs = item.attributes {
                     let campaign = PatreonCampaign(
                         id: item.id,
                         name: (attrs["name"]?.value as? String) ?? "Unknown",
@@ -287,6 +301,12 @@ class PatreonAPI {
                         url: attrs["url"]?.value as? String
                     )
                     campaignLookup[item.id] = campaign
+                }
+
+                if item.type == "media", let attrs = item.attributes {
+                    if let downloadURL = attrs["download_url"]?.value as? String {
+                        mediaLookup[item.id] = downloadURL
+                    }
                 }
             }
         }
@@ -299,6 +319,22 @@ class PatreonAPI {
             var campaign: PatreonCampaign?
             if let campaignId = postData.relationships?.campaign?.data?.id {
                 campaign = campaignLookup[campaignId]
+            }
+
+            // Try to find video URL from post_file relationship
+            var videoURL: String?
+            if let postFileId = postData.relationships?.postFile?.data?.id {
+                videoURL = mediaLookup[postFileId]
+            }
+
+            // Also check attachments_media for video URLs
+            if videoURL == nil, let attachmentRefs = postData.relationships?.attachmentsMedia?.data {
+                for ref in attachmentRefs {
+                    if let url = mediaLookup[ref.id] {
+                        videoURL = url
+                        break
+                    }
+                }
             }
 
             return PatreonPost(
@@ -315,7 +351,8 @@ class PatreonAPI {
                 isPaid: attrs.isPaid ?? false,
                 likeCount: attrs.likeCount ?? 0,
                 commentCount: attrs.commentCount ?? 0,
-                campaign: campaign
+                campaign: campaign,
+                videoURL: videoURL
             )
         }
 

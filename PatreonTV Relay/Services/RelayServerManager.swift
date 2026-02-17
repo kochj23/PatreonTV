@@ -24,6 +24,8 @@ class RelayServerManager: ObservableObject {
     @Published var pairingSessions: [String: PairingSessionData] = [:]
     @Published var connectedClients: [String] = []
     @Published var logs: [LogEntry] = []
+    @Published var pendingLoginCode: String?
+    @Published var showLoginSheet = false
 
     private var listener: NWListener?
     private var connections: [NWConnection] = []
@@ -163,6 +165,9 @@ class RelayServerManager: ObservableObject {
 
     // MARK: - Connection Handling
 
+    /// Tracks buffered data per connection while waiting for a complete HTTP request
+    private var connectionBuffers: [ObjectIdentifier: Data] = [:]
+
     private func handleConnection(_ connection: NWConnection) {
         connection.stateUpdateHandler = { [weak self] state in
             Task { @MainActor in
@@ -171,6 +176,9 @@ class RelayServerManager: ObservableObject {
                     self?.log("Client connected", type: .info)
                 case .failed(let error):
                     self?.log("Connection failed: \(error)", type: .warning)
+                    self?.connectionBuffers.removeValue(forKey: ObjectIdentifier(connection))
+                case .cancelled:
+                    self?.connectionBuffers.removeValue(forKey: ObjectIdentifier(connection))
                 default:
                     break
                 }
@@ -179,29 +187,83 @@ class RelayServerManager: ObservableObject {
 
         connection.start(queue: .main)
         connections.append(connection)
+        connectionBuffers[ObjectIdentifier(connection)] = Data()
 
         receiveData(on: connection)
     }
 
     private func receiveData(on connection: NWConnection) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            if let data = data, !data.isEmpty {
-                Task { @MainActor in
-                    self?.handleRequest(data: data, connection: connection)
+            Task { @MainActor in
+                guard let self = self else { return }
+                let connID = ObjectIdentifier(connection)
+
+                if let data = data, !data.isEmpty {
+                    self.connectionBuffers[connID, default: Data()].append(data)
                 }
-            }
 
-            if let error = error {
-                print("Receive error: \(error)")
-                return
-            }
+                // Check if we have a complete HTTP request
+                if let buffered = self.connectionBuffers[connID],
+                   let requestString = String(data: buffered, encoding: .utf8) {
 
-            if !isComplete {
-                Task { @MainActor in
-                    self?.receiveData(on: connection)
+                    // For GET requests, we just need the headers (ending with \r\n\r\n)
+                    // For POST requests, we need headers + Content-Length bytes of body
+                    if requestString.contains("\r\n\r\n") {
+                        let headerEnd = requestString.range(of: "\r\n\r\n")!
+                        let headerPart = String(requestString[..<headerEnd.lowerBound])
+
+                        // Check if it's a POST with Content-Length
+                        let method = requestString.components(separatedBy: " ").first ?? ""
+                        if method == "POST" {
+                            // Extract Content-Length
+                            let contentLength = self.extractContentLength(from: headerPart)
+                            let bodyStart = requestString[headerEnd.upperBound...]
+                            let bodyBytes = bodyStart.utf8.count
+
+                            if bodyBytes < contentLength {
+                                // Need more data, keep reading
+                                if !isComplete {
+                                    self.receiveData(on: connection)
+                                }
+                                return
+                            }
+                        }
+
+                        // We have a complete request, process it
+                        self.connectionBuffers.removeValue(forKey: connID)
+                        self.handleRequest(data: buffered, connection: connection)
+                        return
+                    }
+                }
+
+                if let error = error {
+                    print("Receive error: \(error)")
+                    self.connectionBuffers.removeValue(forKey: connID)
+                    return
+                }
+
+                if !isComplete {
+                    self.receiveData(on: connection)
+                } else if let buffered = self.connectionBuffers[connID], !buffered.isEmpty {
+                    // Connection complete but we have data - process what we have
+                    self.connectionBuffers.removeValue(forKey: connID)
+                    self.handleRequest(data: buffered, connection: connection)
                 }
             }
         }
+    }
+
+    /// Extract Content-Length header value from HTTP headers
+    private func extractContentLength(from headers: String) -> Int {
+        for line in headers.components(separatedBy: "\r\n") {
+            let parts = line.components(separatedBy: ":")
+            if parts.count >= 2,
+               parts[0].trimmingCharacters(in: .whitespaces).lowercased() == "content-length",
+               let length = Int(parts[1].trimmingCharacters(in: .whitespaces)) {
+                return length
+            }
+        }
+        return 0
     }
 
     // MARK: - HTTP Request Handling
@@ -260,15 +322,20 @@ class RelayServerManager: ObservableObject {
         let code = String(path.dropFirst("/pair/".count))
 
         guard let session = pairingSessions[code], !session.isExpired else {
-            sendResponse(connection: connection, status: "404 Not Found", body: "Pairing code expired or invalid")
+            sendResponse(connection: connection, status: "404 Not Found", contentType: "text/html", body: "<html><body style='font-family:system-ui;text-align:center;padding:60px;background:#1a1a2e;color:white'><h1>Pairing Code Expired</h1><p>Please start a new pairing session from your Apple TV.</p></body></html>")
             return
         }
 
         // Update status to scanning
         pairingSessions[code]?.status = "scanning"
+        log("QR code scanned for pairing code: \(code)", type: .success)
 
-        // Serve the login page HTML
-        let html = generateLoginPageHTML(code: code)
+        // Trigger the native login window on the Mac
+        pendingLoginCode = code
+        showLoginSheet = true
+
+        // Respond to the browser
+        let html = "<html><body style='font-family:system-ui;text-align:center;padding:60px;background:#1a1a2e;color:white'><h1>📺 PatreonTV</h1><p style='font-size:20px;margin-top:20px'>A login window has opened on your Mac.</p><p style='color:#888;margin-top:12px'>Log in to Patreon in the window that appeared on the Mac running PatreonTV Relay.</p><p style='color:#888;margin-top:8px'>Your session will be sent to Apple TV automatically.</p></body></html>"
         sendResponse(connection: connection, status: "200 OK", contentType: "text/html", body: html)
     }
 
@@ -369,15 +436,13 @@ class RelayServerManager: ObservableObject {
     // MARK: - HTTP Response
 
     private func sendResponse(connection: NWConnection, status: String, contentType: String = "text/plain", body: String) {
-        let response = """
-        HTTP/1.1 \(status)\r
-        Content-Type: \(contentType)\r
-        Content-Length: \(body.utf8.count)\r
-        Access-Control-Allow-Origin: *\r
-        Connection: close\r
-        \r
-        \(body)
-        """
+        var response = "HTTP/1.1 \(status)\r\n"
+        response += "Content-Type: \(contentType)\r\n"
+        response += "Content-Length: \(body.utf8.count)\r\n"
+        response += "Access-Control-Allow-Origin: *\r\n"
+        response += "Connection: close\r\n"
+        response += "\r\n"
+        response += body
 
         connection.send(content: response.data(using: .utf8), completion: .contentProcessed { _ in
             connection.cancel()
@@ -643,6 +708,23 @@ class RelayServerManager: ObservableObject {
         }
 
         return addresses
+    }
+
+    // MARK: - Pairing Completion (from native WebView)
+
+    /// Complete a pairing session with a captured session token from the WebView login
+    func completePairing(code: String, sessionToken: String) {
+        guard pairingSessions[code] != nil else {
+            log("Cannot complete pairing: session \(code) not found", type: .error)
+            return
+        }
+
+        pairingSessions[code]?.sessionToken = sessionToken
+        pairingSessions[code]?.status = "completed"
+        pendingLoginCode = nil
+        showLoginSheet = false
+
+        log("Pairing completed for code: \(code) (via native login)", type: .success)
     }
 
     // MARK: - Cleanup

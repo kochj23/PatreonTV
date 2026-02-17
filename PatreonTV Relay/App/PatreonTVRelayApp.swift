@@ -22,6 +22,12 @@ struct PatreonTVRelayApp: App {
             RelayServerView()
                 .environmentObject(serverManager)
                 .frame(minWidth: 500, minHeight: 400)
+                .sheet(isPresented: $serverManager.showLoginSheet) {
+                    if let code = serverManager.pendingLoginCode {
+                        PatreonLoginView(pairingCode: code)
+                            .environmentObject(serverManager)
+                    }
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)

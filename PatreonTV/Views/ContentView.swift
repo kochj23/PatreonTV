@@ -51,6 +51,37 @@ struct WelcomeView: View {
                     .foregroundStyle(.secondary)
             }
 
+            // Discovery status
+            if authManager.isDiscoveringRelay {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Searching for PatreonTV Relay on your network...")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            } else if authManager.relayDiscovered {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Relay found at \(authManager.relayServerHost):\(authManager.relayServerPort)")
+                        .font(.callout)
+                        .foregroundStyle(.green)
+                }
+            }
+
+            // Error message
+            if let error = authManager.errorMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text(error)
+                        .foregroundStyle(.yellow)
+                }
+                .font(.callout)
+                .padding(.horizontal, 30)
+                .multilineTextAlignment(.center)
+            }
+
             // Pair button
             Button {
                 authManager.startPairing()

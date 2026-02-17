@@ -59,8 +59,10 @@ class AuthManager: ObservableObject {
 
     // MARK: - Bonjour Discovery
 
-    /// Discover the PatreonTV Relay server on the local network via Bonjour
+    /// Discover the PatreonTV Relay server on the local network
+    /// Uses Bonjour first, then falls back to scanning common subnet IPs
     private func discoverRelayServer() {
+        // Try Bonjour first
         let descriptor = NWBrowser.Descriptor.bonjour(type: "_patreontv._tcp", domain: nil)
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
@@ -69,13 +71,12 @@ class AuthManager: ObservableObject {
 
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             Task { @MainActor in
-                guard let self = self else { return }
+                guard let self = self, !self.relayDiscovered else { return }
 
                 for result in results {
                     if case .service(let name, _, _, _) = result.endpoint {
                         print("[AuthManager] Found Bonjour service: \(name)")
 
-                        // Resolve the service to get TXT record with host/port
                         let metadata = result.metadata
                         if case .bonjour(let txtRecord) = metadata {
                             if let host = txtRecord["host"],
@@ -85,7 +86,7 @@ class AuthManager: ObservableObject {
                                 self.relayServerPort = port
                                 self.relayDiscovered = true
                                 self.isDiscoveringRelay = false
-                                print("[AuthManager] Relay server discovered at \(host):\(port)")
+                                print("[AuthManager] Relay discovered via Bonjour at \(host):\(port)")
                                 return
                             }
                         }
@@ -97,28 +98,25 @@ class AuthManager: ObservableObject {
             }
         }
 
-        browser.stateUpdateHandler = { [weak self] state in
-            Task { @MainActor in
-                switch state {
-                case .ready:
-                    print("[AuthManager] Bonjour browser ready, searching for relay...")
-                case .failed(let error):
-                    print("[AuthManager] Bonjour browser failed: \(error)")
-                    self?.isDiscoveringRelay = false
-                default:
-                    break
-                }
+        browser.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                print("[AuthManager] Bonjour browser ready, searching for relay...")
+            case .failed(let error):
+                print("[AuthManager] Bonjour browser failed: \(error)")
+            default:
+                break
             }
         }
 
         browser.start(queue: .main)
         self.browser = browser
 
-        // Timeout after 10 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+        // After 3 seconds, if Bonjour hasn't found anything, start subnet scan
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             guard let self = self, !self.relayDiscovered else { return }
-            self.isDiscoveringRelay = false
-            print("[AuthManager] Relay server discovery timed out")
+            print("[AuthManager] Bonjour didn't find relay, starting subnet scan...")
+            self.scanSubnetForRelay()
         }
     }
 
@@ -131,7 +129,6 @@ class AuthManager: ObservableObject {
                     if let innerEndpoint = connection.currentPath?.remoteEndpoint,
                        case .hostPort(let host, let port) = innerEndpoint {
                         let hostString = "\(host)"
-                        // Strip IPv6 prefix if present
                         let cleanHost = hostString.replacingOccurrences(of: "%.*", with: "", options: .regularExpression)
                         self?.relayServerHost = cleanHost
                         self?.relayServerPort = Int(port.rawValue)
@@ -144,6 +141,55 @@ class AuthManager: ObservableObject {
             }
         }
         connection.start(queue: .main)
+    }
+
+    /// Scan common local subnet IPs for the relay server health endpoint
+    private func scanSubnetForRelay() {
+        let port = 8080
+        // Scan 192.168.1.1-254 for the relay server
+        let scanQueue = DispatchQueue(label: "relay-scan", attributes: .concurrent)
+
+        for i in 1...254 {
+            let host = "192.168.1.\(i)"
+            scanQueue.async { [weak self] in
+                self?.probeHost(host, port: port)
+            }
+        }
+
+        // Timeout after 10 seconds total
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            guard let self = self, !self.relayDiscovered else { return }
+            self.isDiscoveringRelay = false
+            print("[AuthManager] Relay server discovery timed out on all methods")
+        }
+    }
+
+    /// Probe a single host to see if PatreonTV Relay is running there
+    private func probeHost(_ host: String, port: Int) {
+        guard let url = URL(string: "http://\(host):\(port)/health") else { return }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard error == nil,
+                  let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200,
+                  let data = data,
+                  let body = String(data: data, encoding: .utf8),
+                  body.contains("ok") else {
+                return
+            }
+
+            Task { @MainActor in
+                guard let self = self, !self.relayDiscovered else { return }
+                self.relayServerHost = host
+                self.relayServerPort = port
+                self.relayDiscovered = true
+                self.isDiscoveringRelay = false
+                print("[AuthManager] Relay found via subnet scan at \(host):\(port)")
+            }
+        }.resume()
     }
 
     // MARK: - Session Management
@@ -188,8 +234,20 @@ class AuthManager: ObservableObject {
 
     /// Start the pairing process
     func startPairing() {
+        // If still discovering, wait a moment and retry
+        if isDiscoveringRelay {
+            errorMessage = "Searching for relay server..."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                self?.startPairing()
+            }
+            return
+        }
+
         guard relayDiscovered else {
             errorMessage = "Relay server not found. Make sure PatreonTV Relay is running on your Mac and both devices are on the same network."
+            // Retry discovery
+            isDiscoveringRelay = true
+            discoverRelayServer()
             return
         }
 

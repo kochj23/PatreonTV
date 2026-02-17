@@ -80,31 +80,58 @@ struct RelayServerView: View {
 
     private var serverInfoView: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Server URL
+            // Server URLs
             VStack(alignment: .leading, spacing: 8) {
-                Text("Server URL")
+                Text("Server URLs")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                HStack {
-                    Text("http://\(serverManager.localIP):\(serverManager.port)")
-                        .font(.system(.body, design: .monospaced))
-                        .textSelection(.enabled)
+                ForEach(serverManager.allLocalIPs, id: \.self) { ip in
+                    HStack {
+                        Text("http://\(ip):\(serverManager.port)")
+                            .font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled)
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString("http://\(serverManager.localIP):\(serverManager.port)", forType: .string)
-                    } label: {
-                        Image(systemName: "doc.on.doc")
+                        if ip == serverManager.localIP {
+                            Text("Primary")
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.2))
+                                .cornerRadius(4)
+                        }
+
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("http://\(ip):\(serverManager.port)", forType: .string)
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy URL")
                     }
-                    .buttonStyle(.borderless)
-                    .help("Copy URL")
+                    .padding(10)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .cornerRadius(6)
                 }
-                .padding(10)
-                .background(Color(nsColor: .textBackgroundColor))
-                .cornerRadius(6)
+
+                if serverManager.allLocalIPs.isEmpty {
+                    HStack {
+                        Text("http://\(serverManager.localIP):\(serverManager.port)")
+                            .font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled)
+                        Spacer()
+                    }
+                    .padding(10)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .cornerRadius(6)
+                }
+
+                Text("Listening on all interfaces. Apple TV discovers this server automatically via Bonjour.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
 
             // Active Sessions

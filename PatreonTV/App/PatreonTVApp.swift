@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import Network
 
 @main
 struct PatreonTVApp: App {
@@ -38,13 +39,111 @@ class AuthManager: ObservableObject {
     private let api = PatreonAPI.shared
     private var pollingTimer: Timer?
 
-    // Relay server configuration
-    var relayServerHost: String = "192.168.1.100" // Default, will be discovered via Bonjour
-    var relayServerPort: Int = 8080
+    // Relay server configuration - discovered via Bonjour
+    @Published var relayServerHost: String = ""
+    @Published var relayServerPort: Int = 8080
+    @Published var isDiscoveringRelay: Bool = true
+    @Published var relayDiscovered: Bool = false
+
+    private var browser: NWBrowser?
 
     private init() {
-        // Try to restore session from Keychain on launch
+        // Discover relay server via Bonjour, then restore session
+        discoverRelayServer()
         restoreSession()
+    }
+
+    deinit {
+        browser?.cancel()
+    }
+
+    // MARK: - Bonjour Discovery
+
+    /// Discover the PatreonTV Relay server on the local network via Bonjour
+    private func discoverRelayServer() {
+        let descriptor = NWBrowser.Descriptor.bonjour(type: "_patreontv._tcp", domain: nil)
+        let parameters = NWParameters()
+        parameters.includePeerToPeer = true
+
+        let browser = NWBrowser(for: descriptor, using: parameters)
+
+        browser.browseResultsChangedHandler = { [weak self] results, _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+
+                for result in results {
+                    if case .service(let name, _, _, _) = result.endpoint {
+                        print("[AuthManager] Found Bonjour service: \(name)")
+
+                        // Resolve the service to get TXT record with host/port
+                        let metadata = result.metadata
+                        if case .bonjour(let txtRecord) = metadata {
+                            if let host = txtRecord["host"],
+                               let portStr = txtRecord["port"],
+                               let port = Int(portStr) {
+                                self.relayServerHost = host
+                                self.relayServerPort = port
+                                self.relayDiscovered = true
+                                self.isDiscoveringRelay = false
+                                print("[AuthManager] Relay server discovered at \(host):\(port)")
+                                return
+                            }
+                        }
+
+                        // Fallback: resolve the endpoint directly
+                        self.resolveEndpoint(result.endpoint)
+                    }
+                }
+            }
+        }
+
+        browser.stateUpdateHandler = { [weak self] state in
+            Task { @MainActor in
+                switch state {
+                case .ready:
+                    print("[AuthManager] Bonjour browser ready, searching for relay...")
+                case .failed(let error):
+                    print("[AuthManager] Bonjour browser failed: \(error)")
+                    self?.isDiscoveringRelay = false
+                default:
+                    break
+                }
+            }
+        }
+
+        browser.start(queue: .main)
+        self.browser = browser
+
+        // Timeout after 10 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            guard let self = self, !self.relayDiscovered else { return }
+            self.isDiscoveringRelay = false
+            print("[AuthManager] Relay server discovery timed out")
+        }
+    }
+
+    /// Resolve a Bonjour endpoint to get host and port
+    private func resolveEndpoint(_ endpoint: NWEndpoint) {
+        let connection = NWConnection(to: endpoint, using: .tcp)
+        connection.stateUpdateHandler = { [weak self] state in
+            Task { @MainActor in
+                if case .ready = state {
+                    if let innerEndpoint = connection.currentPath?.remoteEndpoint,
+                       case .hostPort(let host, let port) = innerEndpoint {
+                        let hostString = "\(host)"
+                        // Strip IPv6 prefix if present
+                        let cleanHost = hostString.replacingOccurrences(of: "%.*", with: "", options: .regularExpression)
+                        self?.relayServerHost = cleanHost
+                        self?.relayServerPort = Int(port.rawValue)
+                        self?.relayDiscovered = true
+                        self?.isDiscoveringRelay = false
+                        print("[AuthManager] Relay resolved to \(cleanHost):\(port)")
+                    }
+                    connection.cancel()
+                }
+            }
+        }
+        connection.start(queue: .main)
     }
 
     // MARK: - Session Management
@@ -89,12 +188,17 @@ class AuthManager: ObservableObject {
 
     /// Start the pairing process
     func startPairing() {
+        guard relayDiscovered else {
+            errorMessage = "Relay server not found. Make sure PatreonTV Relay is running on your Mac and both devices are on the same network."
+            return
+        }
+
         let code = PairingSession.generateCode()
         pairingSession = PairingSession(code: code)
         isPairing = true
         errorMessage = nil
 
-        print("[AuthManager] Starting pairing with code: \(code)")
+        print("[AuthManager] Starting pairing with code: \(code) -> relay at \(relayServerHost):\(relayServerPort)")
 
         // Register the pairing session with the relay server
         Task { @MainActor in
@@ -102,7 +206,7 @@ class AuthManager: ObservableObject {
                 try await registerPairingSession(code: code)
                 startPollingForAuth()
             } catch {
-                self.errorMessage = "Failed to connect to relay server: \(error.localizedDescription)"
+                self.errorMessage = "Failed to connect to relay server at \(relayServerHost):\(relayServerPort) — \(error.localizedDescription)"
                 print("[AuthManager] Failed to register pairing: \(error)")
             }
         }

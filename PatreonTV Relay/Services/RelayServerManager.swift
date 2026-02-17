@@ -20,12 +20,17 @@ class RelayServerManager: ObservableObject {
     @Published var isRunning = false
     @Published var port: UInt16 = 8080
     @Published var localIP: String = "127.0.0.1"
+    @Published var allLocalIPs: [String] = []
     @Published var pairingSessions: [String: PairingSessionData] = [:]
     @Published var connectedClients: [String] = []
     @Published var logs: [LogEntry] = []
 
     private var listener: NWListener?
     private var connections: [NWConnection] = []
+    private var bonjourService: NWListener?
+
+    /// Bonjour service type for relay server discovery
+    static let bonjourServiceType = "_patreontv._tcp"
 
     struct PairingSessionData {
         let code: String
@@ -52,8 +57,9 @@ class RelayServerManager: ObservableObject {
     }
 
     private init() {
-        // Get local IP
-        localIP = getLocalIPAddress() ?? "127.0.0.1"
+        // Get all local IPs and pick the primary one
+        allLocalIPs = getAllLocalIPAddresses()
+        localIP = allLocalIPs.first ?? "127.0.0.1"
     }
 
     // MARK: - Server Control
@@ -94,12 +100,60 @@ class RelayServerManager: ObservableObject {
             listener?.start(queue: .main)
             log("Starting server on \(localIP):\(port)...", type: .info)
 
+            // Advertise via Bonjour so Apple TV can discover us
+            publishBonjourService()
+
         } catch {
             log("Failed to start server: \(error)", type: .error)
         }
     }
 
+    /// Publish Bonjour service so Apple TV can discover the relay server
+    private func publishBonjourService() {
+        do {
+            let parameters = NWParameters()
+            parameters.includePeerToPeer = true
+
+            let bonjourListener = try NWListener(using: parameters)
+            bonjourListener.service = NWListener.Service(
+                name: "PatreonTV Relay",
+                type: RelayServerManager.bonjourServiceType,
+                domain: nil,
+                txtRecord: NWTXTRecord(["host": localIP, "port": String(port)])
+            )
+            bonjourListener.serviceRegistrationUpdateHandler = { [weak self] change in
+                Task { @MainActor in
+                    switch change {
+                    case .add(let endpoint):
+                        self?.log("Bonjour service published: \(endpoint)", type: .success)
+                    case .remove:
+                        self?.log("Bonjour service removed", type: .info)
+                    @unknown default:
+                        break
+                    }
+                }
+            }
+            bonjourListener.stateUpdateHandler = { [weak self] state in
+                Task { @MainActor in
+                    if case .failed(let error) = state {
+                        self?.log("Bonjour publish failed: \(error)", type: .warning)
+                    }
+                }
+            }
+            bonjourListener.newConnectionHandler = { connection in
+                // Not used for discovery, just required by NWListener
+                connection.cancel()
+            }
+            bonjourListener.start(queue: .main)
+            self.bonjourService = bonjourListener
+        } catch {
+            log("Failed to publish Bonjour service: \(error)", type: .warning)
+        }
+    }
+
     func stopServer() {
+        bonjourService?.cancel()
+        bonjourService = nil
         listener?.cancel()
         listener = nil
         connections.forEach { $0.cancel() }
@@ -551,12 +605,13 @@ class RelayServerManager: ObservableObject {
         print("[RelayServer] \(message)")
     }
 
-    private func getLocalIPAddress() -> String? {
-        var address: String?
+    /// Returns all local IPv4 addresses on active network interfaces (en0, en1, etc.)
+    private func getAllLocalIPAddresses() -> [String] {
+        var addresses: [String] = []
 
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else {
-            return nil
+            return []
         }
 
         defer { freeifaddrs(ifaddr) }
@@ -568,8 +623,8 @@ class RelayServerManager: ObservableObject {
             if addrFamily == UInt8(AF_INET) {
                 let name = String(cString: interface.ifa_name)
 
-                // Prefer en0 (WiFi) or en1
-                if name == "en0" || name == "en1" {
+                // Include en0 (usually Ethernet) and en1 (usually WiFi)
+                if name.hasPrefix("en") {
                     var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                     getnameinfo(
                         interface.ifa_addr,
@@ -579,13 +634,15 @@ class RelayServerManager: ObservableObject {
                         nil, 0,
                         NI_NUMERICHOST
                     )
-                    address = String(cString: hostname)
-                    if name == "en0" { break }
+                    let ip = String(cString: hostname)
+                    if !ip.isEmpty && ip != "0.0.0.0" {
+                        addresses.append(ip)
+                    }
                 }
             }
         }
 
-        return address
+        return addresses
     }
 
     // MARK: - Cleanup

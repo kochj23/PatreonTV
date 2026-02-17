@@ -1,0 +1,95 @@
+name: PatreonTV
+options:
+  bundleIdPrefix: com.jordankoch
+  deploymentTarget:
+    tvOS: "17.0"
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: QRRCB8HB3W
+
+targets:
+  PatreonTV:
+    type: application
+    platform: tvOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PatreonTV
+        excludes:
+          - "**/.DS_Store"
+      - path: Shared
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        INFOPLIST_FILE: PatreonTV/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.jordankoch.patreontv
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: App Icon & Top Shelf Image
+    info:
+      path: PatreonTV/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: PatreonTV
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchStoryboardName: ""
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+
+  PatreonTV Relay:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: PatreonTV Relay
+        excludes:
+          - "**/.DS_Store"
+      - path: Shared
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        INFOPLIST_FILE: PatreonTV Relay/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.jordankoch.patreontv.relay
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: PatreonTV Relay/Resources/PatreonTV_Relay.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+    info:
+      path: PatreonTV Relay/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: PatreonTV Relay
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: "Copyright © 2026 Jordan Koch. All rights reserved."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    entitlements:
+      path: PatreonTV Relay/Resources/PatreonTV_Relay.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.network.server: true
+        com.apple.security.network.client: true
+
+schemes:
+  PatreonTV:
+    build:
+      targets:
+        PatreonTV: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
+  PatreonTV Relay:
+    build:
+      targets:
+        PatreonTV Relay: all
+    run:
+      config: Debug
+    archive:
+      config: Release

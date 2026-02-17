@@ -1,0 +1,534 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		090B06BE3D026816B287DE11 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B919B51DA2B62CF8808C4C8 /* HomeView.swift */; };
+		18683CAB62AFADCA980B7568 /* RelayServerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */; };
+		373E0AF118B44CBFF1CE7CFB /* PatreonTVRelayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E265940D34D6156AAB24F81 /* PatreonTVRelayApp.swift */; };
+		3EE2E57975B5E53CC9773000 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9BFBD2030A1FC37B573F1D /* ContentView.swift */; };
+		7427D2E84613966F2DCCC61E /* PatreonTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7843B2F523D1BC270E97593F /* PatreonTVApp.swift */; };
+		80796BEA8A429FEA4B42E21D /* CreatorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8DE17B9ED0E754A47A81AD0 /* CreatorViews.swift */; };
+		8D2669DD8EBDC5FC292AD5E0 /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0BADD832FC175F8A37150C /* PostCardView.swift */; };
+		8E6B48B572BD0AF70A20ABCD /* RelayServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A8709CE87DA2F86DAA0DE6 /* RelayServerView.swift */; };
+		914CDADD8BD6AD1DC5020550 /* PatreonModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430C4FE9D52BF6E4960D2C46 /* PatreonModels.swift */; };
+		AD022F29EBC294D2570D1F7F /* PatreonAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */; };
+		AD27CE475AA7F2D16257A537 /* PatreonModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430C4FE9D52BF6E4960D2C46 /* PatreonModels.swift */; };
+		B7CBD9F84CAA95FE8F78EC64 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBFF9ECA0DC7BF4B9BC0914 /* PostDetailView.swift */; };
+		C64E22F897738216DFD06E52 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265324CE54AF92DCBC426326 /* PairingView.swift */; };
+		F9AFCD8AACA7C63A69455871 /* PatreonAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		265324CE54AF92DCBC426326 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
+		2CBFF9ECA0DC7BF4B9BC0914 /* PostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostDetailView.swift; sourceTree = "<group>"; };
+		3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonAPI.swift; sourceTree = "<group>"; };
+		3C0BADD832FC175F8A37150C /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardView.swift; sourceTree = "<group>"; };
+		430C4FE9D52BF6E4960D2C46 /* PatreonModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonModels.swift; sourceTree = "<group>"; };
+		4B9BFBD2030A1FC37B573F1D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		58A8709CE87DA2F86DAA0DE6 /* RelayServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayServerView.swift; sourceTree = "<group>"; };
+		5E265940D34D6156AAB24F81 /* PatreonTVRelayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonTVRelayApp.swift; sourceTree = "<group>"; };
+		6FBB79DC2F7A8BA261AECBAF /* PatreonTV_Relay.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PatreonTV_Relay.entitlements; sourceTree = "<group>"; };
+		7843B2F523D1BC270E97593F /* PatreonTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonTVApp.swift; sourceTree = "<group>"; };
+		8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayServerManager.swift; sourceTree = "<group>"; };
+		9B919B51DA2B62CF8808C4C8 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		D8DE17B9ED0E754A47A81AD0 /* CreatorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatorViews.swift; sourceTree = "<group>"; };
+		E42849B58CA9B85BE170E103 /* PatreonTV Relay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PatreonTV Relay.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E567F0628DD1A3055508A8A9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		EB71318F4FF189945A1B2BBA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F4ECAA1E045615104D57BEE9 /* PatreonTV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PatreonTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		07451C17A1C92855A572AC4E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				4B9BFBD2030A1FC37B573F1D /* ContentView.swift */,
+				D8DE17B9ED0E754A47A81AD0 /* CreatorViews.swift */,
+				9B919B51DA2B62CF8808C4C8 /* HomeView.swift */,
+				265324CE54AF92DCBC426326 /* PairingView.swift */,
+				3C0BADD832FC175F8A37150C /* PostCardView.swift */,
+				2CBFF9ECA0DC7BF4B9BC0914 /* PostDetailView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		086D2B649B87609F616C90EC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E567F0628DD1A3055508A8A9 /* Info.plist */,
+				6FBB79DC2F7A8BA261AECBAF /* PatreonTV_Relay.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		13963788F6D4B23B88E93CDD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E42849B58CA9B85BE170E103 /* PatreonTV Relay.app */,
+				F4ECAA1E045615104D57BEE9 /* PatreonTV.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		22F1C9B8CBB8E840AEF8C5B1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		24B1A4C62F3F73BBA68D6844 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		3086D7721A7AB3B5B86F4E6E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		361C8FFF4BE8DA1D8B970D4C /* PatreonTV */ = {
+			isa = PBXGroup;
+			children = (
+				F50B15818A702AF57A1D409C /* App */,
+				3086D7721A7AB3B5B86F4E6E /* Models */,
+				C6781556E05E74DF1F6245DD /* Resources */,
+				D9A40A223718E079029C3E40 /* Services */,
+				778A56A11F45DC76B91D1E7F /* ViewModels */,
+				07451C17A1C92855A572AC4E /* Views */,
+			);
+			path = PatreonTV;
+			sourceTree = "<group>";
+		};
+		778A56A11F45DC76B91D1E7F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		9DCD4A909141BA323FA972DD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				430C4FE9D52BF6E4960D2C46 /* PatreonModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A257E271E500A2BA46228640 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				58A8709CE87DA2F86DAA0DE6 /* RelayServerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A97BAC3C68B80EA346EAF6AE /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				9DCD4A909141BA323FA972DD /* Models */,
+				24B1A4C62F3F73BBA68D6844 /* Services */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		C6781556E05E74DF1F6245DD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				EB71318F4FF189945A1B2BBA /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		D17FF1A878BCDB95B8D50DD4 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				5E265940D34D6156AAB24F81 /* PatreonTVRelayApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		D9A40A223718E079029C3E40 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		E80CA0FF013CC7A5972E5E6E = {
+			isa = PBXGroup;
+			children = (
+				361C8FFF4BE8DA1D8B970D4C /* PatreonTV */,
+				EDDFE9D89D91B1EFF786E4D8 /* PatreonTV Relay */,
+				A97BAC3C68B80EA346EAF6AE /* Shared */,
+				13963788F6D4B23B88E93CDD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EDDFE9D89D91B1EFF786E4D8 /* PatreonTV Relay */ = {
+			isa = PBXGroup;
+			children = (
+				D17FF1A878BCDB95B8D50DD4 /* App */,
+				086D2B649B87609F616C90EC /* Resources */,
+				22F1C9B8CBB8E840AEF8C5B1 /* Services */,
+				A257E271E500A2BA46228640 /* Views */,
+			);
+			path = "PatreonTV Relay";
+			sourceTree = "<group>";
+		};
+		F50B15818A702AF57A1D409C /* App */ = {
+			isa = PBXGroup;
+			children = (
+				7843B2F523D1BC270E97593F /* PatreonTVApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		16A4D1E0DF06791069F1C67F /* PatreonTV Relay */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CF52F8CE4DAD3EBA9249BAF5 /* Build configuration list for PBXNativeTarget "PatreonTV Relay" */;
+			buildPhases = (
+				EEBA33084EC72DB1F6544A27 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PatreonTV Relay";
+			packageProductDependencies = (
+			);
+			productName = "PatreonTV Relay";
+			productReference = E42849B58CA9B85BE170E103 /* PatreonTV Relay.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C728BAF30CF896222F6D95D2 /* PatreonTV */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EC43B7FBE10D26D1F14C98D7 /* Build configuration list for PBXNativeTarget "PatreonTV" */;
+			buildPhases = (
+				B594826BC5F61288174896CF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PatreonTV;
+			packageProductDependencies = (
+			);
+			productName = PatreonTV;
+			productReference = F4ECAA1E045615104D57BEE9 /* PatreonTV.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		541BC3414DA2244A208C5116 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					16A4D1E0DF06791069F1C67F = {
+						DevelopmentTeam = QRRCB8HB3W;
+						ProvisioningStyle = Automatic;
+					};
+					C728BAF30CF896222F6D95D2 = {
+						DevelopmentTeam = QRRCB8HB3W;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1895AE8DFD2AE3DEA5729FA4 /* Build configuration list for PBXProject "PatreonTV" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E80CA0FF013CC7A5972E5E6E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C728BAF30CF896222F6D95D2 /* PatreonTV */,
+				16A4D1E0DF06791069F1C67F /* PatreonTV Relay */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B594826BC5F61288174896CF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3EE2E57975B5E53CC9773000 /* ContentView.swift in Sources */,
+				80796BEA8A429FEA4B42E21D /* CreatorViews.swift in Sources */,
+				090B06BE3D026816B287DE11 /* HomeView.swift in Sources */,
+				C64E22F897738216DFD06E52 /* PairingView.swift in Sources */,
+				AD022F29EBC294D2570D1F7F /* PatreonAPI.swift in Sources */,
+				914CDADD8BD6AD1DC5020550 /* PatreonModels.swift in Sources */,
+				7427D2E84613966F2DCCC61E /* PatreonTVApp.swift in Sources */,
+				8D2669DD8EBDC5FC292AD5E0 /* PostCardView.swift in Sources */,
+				B7CBD9F84CAA95FE8F78EC64 /* PostDetailView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EEBA33084EC72DB1F6544A27 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F9AFCD8AACA7C63A69455871 /* PatreonAPI.swift in Sources */,
+				AD27CE475AA7F2D16257A537 /* PatreonModels.swift in Sources */,
+				373E0AF118B44CBFF1CE7CFB /* PatreonTVRelayApp.swift in Sources */,
+				18683CAB62AFADCA980B7568 /* RelayServerManager.swift in Sources */,
+				8E6B48B572BD0AF70A20ABCD /* RelayServerView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5C31013653F0DE6B349E0B4A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = QRRCB8HB3W;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Release;
+		};
+		6FCA90B8033A2289F57B47A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = QRRCB8HB3W;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
+		};
+		94BEDB46FEE614301A2BF1FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = PatreonTV/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv;
+				SDKROOT = appletvos;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
+		};
+		BA97E8BDEA79287AA02B2991 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = PatreonTV/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv;
+				SDKROOT = appletvos;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Release;
+		};
+		CFA1DA77D84272FA94975E4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "PatreonTV Relay/Resources/PatreonTV_Relay.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = "PatreonTV Relay/Resources/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv.relay;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		F4F3B5776ED684D31125487A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "PatreonTV Relay/Resources/PatreonTV_Relay.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = "PatreonTV Relay/Resources/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv.relay;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1895AE8DFD2AE3DEA5729FA4 /* Build configuration list for PBXProject "PatreonTV" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6FCA90B8033A2289F57B47A8 /* Debug */,
+				5C31013653F0DE6B349E0B4A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CF52F8CE4DAD3EBA9249BAF5 /* Build configuration list for PBXNativeTarget "PatreonTV Relay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFA1DA77D84272FA94975E4C /* Debug */,
+				F4F3B5776ED684D31125487A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EC43B7FBE10D26D1F14C98D7 /* Build configuration list for PBXNativeTarget "PatreonTV" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94BEDB46FEE614301A2BF1FC /* Debug */,
+				BA97E8BDEA79287AA02B2991 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 541BC3414DA2244A208C5116 /* Project object */;
+}

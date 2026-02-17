@@ -1,0 +1,32 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+
+# Secrets & credentials
+*.p12
+*.cer
+*.mobileprovision
+secrets.json
+credentials.json
+.env
+config.plist
+
+# macOS
+.DS_Store
+*.swp
+*.lock
+profile
+*~

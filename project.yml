@@ -29,7 +29,7 @@ targets:
         INFOPLIST_FILE: PatreonTV/Resources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.jordankoch.patreontv
         CODE_SIGN_STYLE: Automatic
-        ASSETCATALOG_COMPILER_APPICON_NAME: App Icon & Top Shelf Image
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: PatreonTV/Resources/Info.plist
       properties:

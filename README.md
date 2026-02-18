@@ -1,5 +1,7 @@
 # PatreonTV
 
+![Build](https://github.com/kochj23/PatreonTV/actions/workflows/build.yml/badge.svg)
+
 Watch your favorite Patreon creators on Apple TV.
 
 ## Overview

@@ -58,36 +58,59 @@ struct FeedView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 80) {
-                    if viewModel.isLoadingFeed && viewModel.feedPosts.isEmpty {
-                        ProgressView("Loading feed...")
-                            .padding(.top, 100)
-                    } else if viewModel.feedPosts.isEmpty {
-                        emptyStateView
-                    } else {
-                        ForEach(viewModel.feedPosts) { post in
-                            PostCardView(post: post) {
-                                selectedPost = post
-                            }
-                            .frame(maxWidth: 800)
-                        }
+                VStack(spacing: 0) {
+                    // Creator filter chips
+                    if !viewModel.uniqueFeedCreators.isEmpty {
+                        CreatorFilterBar(viewModel: viewModel)
+                            .padding(.bottom, 30)
+                    }
 
-                        // Load more button
-                        if viewModel.hasMoreFeedPosts {
-                            Button {
-                                Task {
-                                    await viewModel.loadMoreFeed()
+                    LazyVStack(spacing: 80) {
+                        if viewModel.isLoadingFeed && viewModel.feedPosts.isEmpty {
+                            ProgressView("Loading feed...")
+                                .padding(.top, 100)
+                        } else if viewModel.filteredFeedPosts.isEmpty && viewModel.selectedCreatorFilter != nil {
+                            // Filtered to empty — show hint
+                            VStack(spacing: 16) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: 50))
+                                    .foregroundStyle(PatreonColors.textTertiary)
+                                Text("No posts from this creator in your feed")
+                                    .font(.system(size: 24))
+                                    .foregroundStyle(PatreonColors.textSecondary)
+                                Button("Show All") {
+                                    viewModel.selectedCreatorFilter = nil
                                 }
-                            } label: {
-                                if viewModel.isLoadingFeed {
-                                    ProgressView()
-                                } else {
-                                    Text("Load More")
-                                        .font(.system(size: 22))
-                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.bordered)
-                            .padding(.vertical, 40)
+                            .padding(.top, 80)
+                        } else if viewModel.feedPosts.isEmpty {
+                            emptyStateView
+                        } else {
+                            ForEach(viewModel.filteredFeedPosts) { post in
+                                PostCardView(post: post) {
+                                    selectedPost = post
+                                }
+                                .frame(maxWidth: 800)
+                            }
+
+                            // Load more button (only show when not filtering)
+                            if viewModel.hasMoreFeedPosts && viewModel.selectedCreatorFilter == nil {
+                                Button {
+                                    Task {
+                                        await viewModel.loadMoreFeed()
+                                    }
+                                } label: {
+                                    if viewModel.isLoadingFeed {
+                                        ProgressView()
+                                    } else {
+                                        Text("Load More")
+                                            .font(.system(size: 22))
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .padding(.vertical, 40)
+                            }
                         }
                     }
                 }
@@ -95,11 +118,32 @@ struct FeedView: View {
                 .padding(.vertical, 60)
             }
             .navigationTitle("Your Feed")
-            .refreshable {
-                await viewModel.refreshFeed()
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        Task { await viewModel.refreshFeed() }
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(viewModel.isLoadingFeed)
+                }
             }
             .fullScreenCover(item: $selectedPost) { post in
-                PostDetailView(post: post)
+                PostDetailView(post: post, allPosts: viewModel.filteredFeedPosts)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("PlayNextPost"))) { notification in
+                if let postID = notification.userInfo?["postID"] as? String,
+                   let nextPost = viewModel.filteredFeedPosts.first(where: { $0.id == postID }) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        selectedPost = nextPost
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("DeepLinkToPost"))) { notification in
+                if let postID = notification.userInfo?["postID"] as? String,
+                   let post = viewModel.feedPosts.first(where: { $0.id == postID }) {
+                    selectedPost = post
+                }
             }
         }
     }
@@ -153,8 +197,15 @@ struct CreatorsView: View {
                 }
             }
             .navigationTitle("Creators You Support")
-            .refreshable {
-                await viewModel.loadCreators()
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        Task { await viewModel.loadCreators() }
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(viewModel.isLoadingCreators)
+                }
             }
             .fullScreenCover(item: $selectedCampaign) { campaign in
                 CreatorDetailView(campaign: campaign)
@@ -239,6 +290,79 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Creator Filter Bar
+
+struct CreatorFilterBar: View {
+    @ObservedObject var viewModel: HomeViewModel
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                FilterChip(
+                    label: "All",
+                    isSelected: viewModel.selectedCreatorFilter == nil
+                ) {
+                    viewModel.selectedCreatorFilter = nil
+                }
+
+                ForEach(viewModel.uniqueFeedCreators) { campaign in
+                    FilterChip(
+                        label: campaign.name,
+                        avatarURL: campaign.avatarURL,
+                        isSelected: viewModel.selectedCreatorFilter == campaign.id
+                    ) {
+                        viewModel.selectedCreatorFilter = campaign.id
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Filter Chip
+
+struct FilterChip: View {
+    let label: String
+    var avatarURL: String?
+    let isSelected: Bool
+    let action: () -> Void
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let avatarStr = avatarURL, let url = URL(string: avatarStr) {
+                    AsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Circle()
+                            .fill(Color.gray.opacity(0.3))
+                    }
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+                }
+
+                Text(label)
+                    .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(isSelected ? PatreonColors.coral : Color.white.opacity(0.1))
+            )
+            .foregroundStyle(isSelected ? .white : PatreonColors.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .focused($isFocused)
+        .scaleEffect(isFocused ? 1.1 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isFocused)
+    }
+}
+
 // MARK: - Home View Model
 
 @MainActor
@@ -249,14 +373,31 @@ class HomeViewModel: ObservableObject {
     @Published var isLoadingCreators = false
     @Published var hasMoreFeedPosts = true
     @Published var errorMessage: String?
+    @Published var selectedCreatorFilter: String?  // campaign ID, nil = "All"
+
+    /// Feed posts filtered by selected creator (nil = show all)
+    var filteredFeedPosts: [PatreonPost] {
+        guard let filterID = selectedCreatorFilter else { return feedPosts }
+        return feedPosts.filter { $0.campaign?.id == filterID }
+    }
+
+    /// Unique creators extracted from feed, for filter chips
+    var uniqueFeedCreators: [PatreonCampaign] {
+        var seen = Set<String>()
+        return feedPosts.compactMap { post -> PatreonCampaign? in
+            guard let c = post.campaign, !seen.contains(c.id) else { return nil }
+            seen.insert(c.id)
+            return c
+        }
+    }
 
     private var feedCursor: String?
     private let api = PatreonAPI.shared
 
     func loadInitialData() async {
-        async let feedTask: () = loadFeed()
-        async let creatorsTask: () = loadCreators()
-        _ = await (feedTask, creatorsTask)
+        // Load feed first so creators fallback has data if fetchMemberships fails
+        await loadFeed()
+        await loadCreators()
     }
 
     func loadFeed() async {
@@ -269,6 +410,7 @@ class HomeViewModel: ObservableObject {
             feedPosts = posts
             feedCursor = cursor
             hasMoreFeedPosts = cursor != nil
+            updateTopShelfData()
         } catch {
             errorMessage = error.localizedDescription
             print("[HomeViewModel] Error loading feed: \(error)")
@@ -305,12 +447,71 @@ class HomeViewModel: ObservableObject {
         do {
             campaigns = try await api.fetchMemberships()
         } catch {
-            errorMessage = error.localizedDescription
-            print("[HomeViewModel] Error loading creators: \(error)")
+            print("[HomeViewModel] fetchMemberships failed: \(error), falling back to feed extraction")
+            // Fallback: extract unique campaigns from feed posts
+            if feedPosts.isEmpty {
+                do {
+                    let (posts, cursor) = try await api.fetchHomeFeed()
+                    feedPosts = posts
+                    feedCursor = cursor
+                    hasMoreFeedPosts = cursor != nil
+                } catch {
+                    print("[HomeViewModel] Feed fallback also failed: \(error)")
+                }
+            }
+            var seen = Set<String>()
+            var extracted: [PatreonCampaign] = []
+            for post in feedPosts {
+                if let campaign = post.campaign, !seen.contains(campaign.id) {
+                    seen.insert(campaign.id)
+                    extracted.append(campaign)
+                }
+            }
+            campaigns = extracted
+            if campaigns.isEmpty {
+                errorMessage = "Could not load creators. Please try refreshing."
+            }
         }
 
         isLoadingCreators = false
     }
+
+    // MARK: - Top Shelf Data Sharing
+
+    /// Write recent posts to App Group container for the Top Shelf extension
+    private func updateTopShelfData() {
+        let topPosts = Array(feedPosts.prefix(10)).map { post in
+            TopShelfPostData(
+                id: post.id,
+                title: post.displayTitle,
+                thumbnailURL: post.thumbnailURL ?? post.imageURL,
+                campaignName: post.campaign?.name,
+                postType: post.postType.rawValue
+            )
+        }
+
+        guard let sharedDefaults = UserDefaults(suiteName: "group.com.jordankoch.patreontv") else {
+            print("[HomeViewModel] Could not access App Group container")
+            return
+        }
+
+        do {
+            let data = try JSONEncoder().encode(topPosts)
+            sharedDefaults.set(data, forKey: "top_shelf_posts")
+            print("[HomeViewModel] Updated Top Shelf with \(topPosts.count) posts")
+        } catch {
+            print("[HomeViewModel] Failed to encode Top Shelf data: \(error)")
+        }
+    }
+}
+
+/// Lightweight model for sharing post data with Top Shelf extension
+struct TopShelfPostData: Codable {
+    let id: String
+    let title: String
+    let thumbnailURL: String?
+    let campaignName: String?
+    let postType: String
 }
 
 #Preview {

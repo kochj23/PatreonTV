@@ -31,6 +31,20 @@ class RelayServerManager: ObservableObject {
     @Published var activeStreamCount: Int = 0
     @Published var totalBytesProxied: UInt64 = 0
 
+    // Persistent Patreon session — stored on the relay, used for all API calls
+    @Published var patreonSessionID: String? {
+        didSet {
+            if let sid = patreonSessionID {
+                UserDefaults.standard.set(sid, forKey: "patreon_session_id")
+                log("Patreon session stored on relay", type: .success)
+            } else {
+                UserDefaults.standard.removeObject(forKey: "patreon_session_id")
+            }
+        }
+    }
+    @Published var patreonSessionValid: Bool = false
+    @Published var patreonUserName: String?
+
     private let mediaProxy = MediaProxyService.shared
     private var listener: NWListener?
     private var connections: [NWConnection] = []
@@ -67,6 +81,65 @@ class RelayServerManager: ObservableObject {
         // Get all local IPs and pick the primary one
         allLocalIPs = getAllLocalIPAddresses()
         localIP = allLocalIPs.first ?? "127.0.0.1"
+
+        // Restore persisted Patreon session
+        if let storedSession = UserDefaults.standard.string(forKey: "patreon_session_id"), !storedSession.isEmpty {
+            patreonSessionID = storedSession
+            print("[RelayServer] Restored Patreon session from disk: \(storedSession.prefix(20))...")
+            // Validate the stored session
+            Task { await validatePatreonSession() }
+        }
+    }
+
+    /// Validate the stored Patreon session by calling the Patreon API
+    func validatePatreonSession() async {
+        guard let sessionID = patreonSessionID else {
+            patreonSessionValid = false
+            patreonUserName = nil
+            return
+        }
+
+        let urlString = "https://www.patreon.com/api/current_user?fields[user]=full_name"
+        guard let url = URL(string: urlString) else { return }
+
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("session_id=\(sessionID)", forHTTPHeaderField: "Cookie")
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15", forHTTPHeaderField: "User-Agent")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResp = response as? HTTPURLResponse, (200...299).contains(httpResp.statusCode) {
+                patreonSessionValid = true
+
+                // Extract user name
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let userData = json["data"] as? [String: Any],
+                   let attrs = userData["attributes"] as? [String: Any],
+                   let name = attrs["full_name"] as? String {
+                    patreonUserName = name
+                    log("Patreon session valid — logged in as \(name)", type: .success)
+                } else {
+                    log("Patreon session valid", type: .success)
+                }
+            } else {
+                patreonSessionValid = false
+                patreonUserName = nil
+                log("Patreon session expired or invalid", type: .warning)
+            }
+        } catch {
+            patreonSessionValid = false
+            patreonUserName = nil
+            log("Failed to validate Patreon session: \(error.localizedDescription)", type: .error)
+        }
+    }
+
+    /// Clear the stored Patreon session (for re-login)
+    func clearPatreonSession() {
+        patreonSessionID = nil
+        patreonSessionValid = false
+        patreonUserName = nil
+        log("Patreon session cleared", type: .info)
     }
 
     // MARK: - Server Control
@@ -331,7 +404,16 @@ class RelayServerManager: ObservableObject {
             sendResponse(connection: connection, status: "200 OK", body: "PatreonTV Relay Server Running")
 
         case ("GET", "/health"):
-            sendResponse(connection: connection, status: "200 OK", contentType: "application/json", body: "{\"status\":\"ok\"}")
+            let sessionStatus = patreonSessionValid ? "valid" : (patreonSessionID != nil ? "expired" : "none")
+            let userName = patreonUserName ?? ""
+            sendResponse(connection: connection, status: "200 OK", contentType: "application/json",
+                         body: "{\"status\":\"ok\",\"session\":\"\(sessionStatus)\",\"user\":\"\(userName)\"}")
+
+        case ("GET", "/api/session/status"):
+            handleSessionStatus(connection: connection)
+
+        case ("POST", "/api/session/relogin"):
+            handleReloginRequest(connection: connection)
 
         case ("GET", let p) where p.hasPrefix("/api/media/stream/"):
             let requestString = String(data: data, encoding: .utf8) ?? ""
@@ -454,6 +536,10 @@ class RelayServerManager: ObservableObject {
         pairingSessions[code]?.userName = json["user_name"]
         pairingSessions[code]?.status = "completed"
 
+        // Store session on the relay for media proxy use
+        patreonSessionID = sessionToken
+        Task { await validatePatreonSession() }
+
         log("Pairing completed for code: \(code)", type: .success)
 
         sendResponse(connection: connection, status: "200 OK", contentType: "application/json", body: "{\"status\":\"completed\"}")
@@ -469,6 +555,21 @@ class RelayServerManager: ObservableObject {
         response += "Connection: close\r\n"
         response += "\r\n"
         response += body
+
+        connection.send(content: response.data(using: .utf8), completion: .contentProcessed { _ in
+            connection.cancel()
+        })
+    }
+
+    /// Send a 302 redirect response. Used for YouTube/Vimeo HLS streams
+    /// where AVPlayer should follow the URL directly.
+    private func sendRedirect(connection: NWConnection, location: String) {
+        var response = "HTTP/1.1 302 Found\r\n"
+        response += "Location: \(location)\r\n"
+        response += "Access-Control-Allow-Origin: *\r\n"
+        response += "Connection: close\r\n"
+        response += "Content-Length: 0\r\n"
+        response += "\r\n"
 
         connection.send(content: response.data(using: .utf8), completion: .contentProcessed { _ in
             connection.cancel()
@@ -750,13 +851,58 @@ class RelayServerManager: ObservableObject {
         pendingLoginCode = nil
         showLoginSheet = false
 
+        // Store session on the relay for media proxy use
+        patreonSessionID = sessionToken
+        log("Patreon session stored on relay", type: .success)
+
+        // Validate the session asynchronously
+        Task { await validatePatreonSession() }
+
         log("Pairing completed for code: \(code) (via native login)", type: .success)
+    }
+
+    // MARK: - Session Management Endpoints
+
+    private func handleSessionStatus(connection: NWConnection) {
+        let status: String
+        if patreonSessionValid {
+            status = "valid"
+        } else if patreonSessionID != nil {
+            status = "expired"
+        } else {
+            status = "none"
+        }
+
+        let userName = patreonUserName ?? ""
+        sendResponse(connection: connection, status: "200 OK", contentType: "application/json",
+                     body: "{\"status\":\"\(status)\",\"user\":\"\(userName)\"}")
+    }
+
+    private func handleReloginRequest(connection: NWConnection) {
+        // Open the login sheet for re-authentication
+        // Use a dummy pairing code since this isn't part of Apple TV pairing
+        let reloginCode = "relogin-\(UUID().uuidString.prefix(8))"
+        let session = PairingSessionData(
+            code: reloginCode,
+            status: "authenticating",
+            sessionToken: nil,
+            userName: nil,
+            createdAt: Date(),
+            expiresAt: Date().addingTimeInterval(600) // 10 minutes
+        )
+        pairingSessions[reloginCode] = session
+        pendingLoginCode = reloginCode
+        showLoginSheet = true
+
+        log("Re-login requested — opening Patreon login window", type: .info)
+        sendResponse(connection: connection, status: "200 OK", contentType: "application/json",
+                     body: "{\"status\":\"login_window_opened\"}")
     }
 
     // MARK: - Media Streaming Proxy
 
     private func handleMediaStream(path: String, requestString: String, connection: NWConnection) {
-        // Extract post ID — supports /api/media/stream/<postID> and /api/media/stream/<postID>?sid=<token>
+        // Extract post ID and query params
         let pathAfterPrefix = String(path.dropFirst("/api/media/stream/".count))
         let postID = pathAfterPrefix.components(separatedBy: "?").first ?? pathAfterPrefix
 
@@ -769,41 +915,98 @@ class RelayServerManager: ObservableObject {
         let headers = parseRequestHeaders(from: requestString)
         let rangeHeader = headers["range"]
 
-        // Session ID: try header first, then query param fallback
-        var sessionID = headers["x-session-id"]
-        if sessionID == nil || sessionID!.isEmpty {
-            // Parse ?sid=<token> from path
-            if let queryStart = pathAfterPrefix.range(of: "?") {
-                let query = String(pathAfterPrefix[queryStart.upperBound...])
-                for param in query.components(separatedBy: "&") {
-                    let parts = param.components(separatedBy: "=")
-                    if parts.count == 2, parts[0] == "sid" {
-                        sessionID = parts[1]
-                    }
+        // Parse query parameters (URL-decoded)
+        var queryParams: [String: String] = [:]
+        if let queryStart = pathAfterPrefix.range(of: "?") {
+            let query = String(pathAfterPrefix[queryStart.upperBound...])
+            for param in query.components(separatedBy: "&") {
+                let parts = param.components(separatedBy: "=")
+                if parts.count == 2 {
+                    queryParams[parts[0]] = parts[1].removingPercentEncoding ?? parts[1]
                 }
             }
         }
 
+        // Session ID priority: relay's stored session > header > query param
+        let sessionID = patreonSessionID ?? headers["x-session-id"] ?? queryParams["sid"]
+
         guard let sessionID = sessionID, !sessionID.isEmpty else {
             sendResponse(connection: connection, status: "401 Unauthorized",
-                         contentType: "application/json", body: "{\"error\":\"Missing session ID. Pass X-Session-ID header or ?sid= query parameter.\"}")
+                         contentType: "application/json", body: "{\"error\":\"No Patreon session. Please log in via the relay dashboard or re-pair your Apple TV.\"}")
             return
         }
 
-        log("STREAM post=\(postID) range=\(rangeHeader ?? "none")", type: .info)
+        // Extract media URLs passed by the Apple TV (from feed data it already has)
+        let videoURL = queryParams["video_url"]
+        let audioURL = queryParams["audio_url"]
+        let embedURL = queryParams["embed_url"]
+        let postType = queryParams["type"] ?? ""
+
+        log("STREAM post=\(postID) type=\(postType) session=\(sessionID == patreonSessionID ? "relay" : "client") range=\(rangeHeader ?? "none")", type: .info)
+        if let e = embedURL { log("  embed: \(e.prefix(60))", type: .info) }
+        if let v = videoURL { log("  video: \(v.prefix(60))", type: .info) }
+        if let a = audioURL { log("  audio: \(a.prefix(60))", type: .info) }
         activeStreamCount += 1
 
         Task {
             do {
-                let (mediaURL, source) = try await mediaProxy.resolveMediaURL(postID: postID, sessionID: sessionID)
-                log("Resolved \(postID) via \(source.rawValue)", type: .success)
+                let resolvedURL: URL
+                let source: MediaProxyService.MediaSource
+                var useRedirect = false  // Redirect instead of proxy for HLS/YouTube
 
-                await proxyUpstreamMedia(
-                    mediaURL: mediaURL,
-                    rangeHeader: rangeHeader,
-                    sessionID: sessionID,
-                    connection: connection
-                )
+                // Use URLs passed directly from the Apple TV (from feed data)
+                // This avoids needing to re-fetch the post from Patreon API (which can return 403)
+                if let embedStr = embedURL {
+                    let lower = embedStr.lowercased()
+                    if lower.contains("youtube.com") || lower.contains("youtu.be") {
+                        log("YouTube embed detected, running yt-dlp...", type: .info)
+                        resolvedURL = try await mediaProxy.extractWithYtdlp(urlString: embedStr)
+                        source = .youtube
+                        useRedirect = true  // YouTube returns HLS — let AVPlayer handle directly
+                    } else if lower.contains("vimeo.com") {
+                        log("Vimeo embed detected, running yt-dlp...", type: .info)
+                        resolvedURL = try await mediaProxy.extractWithYtdlp(urlString: embedStr)
+                        source = .vimeo
+                        useRedirect = true  // Vimeo may also use HLS
+                    } else if let url = URL(string: embedStr) {
+                        resolvedURL = url
+                        source = .directURL
+                    } else {
+                        throw MediaProxyService.MediaProxyError.noPlayableMedia
+                    }
+                } else if let videoStr = videoURL, let url = URL(string: videoStr) {
+                    log("Resolving Patreon video redirect...", type: .info)
+                    resolvedURL = try await mediaProxy.resolvePatreonRedirects(url: url, sessionID: sessionID)
+                    source = .patreonCDN
+                } else if let audioStr = audioURL, let url = URL(string: audioStr) {
+                    log("Resolving Patreon audio redirect...", type: .info)
+                    resolvedURL = try await mediaProxy.resolvePatreonRedirects(url: url, sessionID: sessionID)
+                    source = .patreonCDN
+                } else {
+                    // Fallback: try fetching post data from Patreon API
+                    log("No direct URLs, fetching from Patreon API...", type: .info)
+                    let result = try await mediaProxy.resolveMediaURL(postID: postID, sessionID: sessionID)
+                    resolvedURL = result.url
+                    source = result.source
+                }
+
+                log("Resolved \(postID) via \(source.rawValue): \(resolvedURL.absoluteString.prefix(80))...", type: .success)
+
+                if useRedirect {
+                    // For YouTube/Vimeo HLS streams, redirect the client directly.
+                    // AVPlayer handles HLS natively and can stream from the CDN.
+                    // Proxying HLS manifests breaks because segment URLs point to the CDN.
+                    log("Redirecting client to \(source.rawValue) stream", type: .info)
+                    sendRedirect(connection: connection, location: resolvedURL.absoluteString)
+                    activeStreamCount -= 1
+                } else {
+                    await proxyUpstreamMedia(
+                        mediaURL: resolvedURL,
+                        rangeHeader: rangeHeader,
+                        sessionID: sessionID,
+                        connection: connection
+                    )
+                }
             } catch let error as MediaProxyService.MediaProxyError {
                 let (status, message) = mediaProxyErrorResponse(error)
                 log("Stream error for \(postID): \(message)", type: .error)

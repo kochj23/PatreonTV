@@ -166,6 +166,82 @@ struct RelayServerView: View {
                 }
             }
 
+            // Patreon Session Status
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Patreon Session")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Text("Status")
+                    Spacer()
+                    if serverManager.patreonSessionValid {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text("Logged In")
+                                .foregroundStyle(.green)
+                        }
+                    } else if serverManager.patreonSessionID != nil {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Session Expired")
+                                .foregroundStyle(.orange)
+                        }
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.red)
+                            Text("Not Logged In")
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+                .font(.caption)
+
+                if let userName = serverManager.patreonUserName {
+                    HStack {
+                        Text("User")
+                        Spacer()
+                        Text(userName)
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                }
+
+                if !serverManager.patreonSessionValid {
+                    Button {
+                        // Trigger re-login
+                        let code = "relogin-\(UUID().uuidString.prefix(8))"
+                        let session = RelayServerManager.PairingSessionData(
+                            code: code,
+                            status: "authenticating",
+                            sessionToken: nil,
+                            userName: nil,
+                            createdAt: Date(),
+                            expiresAt: Date().addingTimeInterval(600)
+                        )
+                        serverManager.pairingSessions[code] = session
+                        serverManager.pendingLoginCode = code
+                        serverManager.showLoginSheet = true
+                    } label: {
+                        Label("Log In to Patreon", systemImage: "arrow.right.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                } else {
+                    Button {
+                        Task { await serverManager.validatePatreonSession() }
+                    } label: {
+                        Label("Refresh Session", systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
             // Media Proxy Status
             VStack(alignment: .leading, spacing: 8) {
                 Text("Media Proxy")

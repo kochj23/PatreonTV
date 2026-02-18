@@ -20,29 +20,44 @@ struct PostCardView: View {
         Button(action: onSelect) {
             VStack(alignment: .leading, spacing: 0) {
                 // Thumbnail/Image
-                if let imageURL = post.thumbnailURL ?? post.imageURL,
-                   let url = URL(string: imageURL) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(16/9, contentMode: .fill)
-                        case .failure:
-                            placeholderImage
-                        case .empty:
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 220)
-                        @unknown default:
-                            placeholderImage
+                ZStack(alignment: .bottom) {
+                    if let imageURL = post.thumbnailURL ?? post.imageURL,
+                       let url = URL(string: imageURL) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(16/9, contentMode: .fill)
+                            case .failure:
+                                placeholderImage
+                            case .empty:
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 220)
+                            @unknown default:
+                                placeholderImage
+                            }
+                        }
+                        .frame(height: 220)
+                        .clipped()
+                    } else {
+                        placeholderImage
+                            .frame(height: 160)
+                    }
+
+                    // Continue Watching progress bar
+                    if let progress = PlaybackProgressManager.shared.progressFraction(postID: post.id) {
+                        GeometryReader { geo in
+                            VStack {
+                                Spacer()
+                                Rectangle()
+                                    .fill(PatreonColors.coral)
+                                    .frame(width: geo.size.width * progress, height: 4)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
                     }
-                    .frame(height: 220)
-                    .clipped()
-                } else {
-                    placeholderImage
-                        .frame(height: 160)
                 }
 
                 // Content

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BB0000000000000000000001 /* PlaybackProgressManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000010 /* PlaybackProgressManager.swift */; };
+		BB0000000000000000000002 /* ContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000011 /* ContentProvider.swift */; };
+		BB0000000000000000000056 /* PatreonTV Top Shelf.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000015 /* PatreonTV Top Shelf.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CC0000000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000001 /* Assets.xcassets */; };
 		090B06BE3D026816B287DE11 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B919B51DA2B62CF8808C4C8 /* HomeView.swift */; };
 		18683CAB62AFADCA980B7568 /* RelayServerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */; };
 		FC4CF2720AD859D433247D24 /* MediaProxyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225D1CCFAD178BF3942EEC41 /* MediaProxyService.swift */; };
@@ -54,6 +58,13 @@
 		E567F0628DD1A3055508A8A9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EB71318F4FF189945A1B2BBA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F4ECAA1E045615104D57BEE9 /* PatreonTV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PatreonTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000010 /* PlaybackProgressManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackProgressManager.swift; sourceTree = "<group>"; };
+		BB0000000000000000000011 /* ContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentProvider.swift; sourceTree = "<group>"; };
+		BB0000000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BB0000000000000000000013 /* PatreonTV_Top_Shelf.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PatreonTV_Top_Shelf.entitlements; sourceTree = "<group>"; };
+		BB0000000000000000000014 /* PatreonTV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PatreonTV.entitlements; sourceTree = "<group>"; };
+		CC0000000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB0000000000000000000015 /* PatreonTV Top Shelf.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "PatreonTV Top Shelf.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -84,6 +95,7 @@
 			children = (
 				E42849B58CA9B85BE170E103 /* PatreonTV Relay.app */,
 				F4ECAA1E045615104D57BEE9 /* PatreonTV.app */,
+				BB0000000000000000000015 /* PatreonTV Top Shelf.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -172,7 +184,9 @@
 		C6781556E05E74DF1F6245DD /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				CC0000000000000000000001 /* Assets.xcassets */,
 				EB71318F4FF189945A1B2BBA /* Info.plist */,
+				BB0000000000000000000014 /* PatreonTV.entitlements */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -188,6 +202,7 @@
 		D9A40A223718E079029C3E40 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				BB0000000000000000000010 /* PlaybackProgressManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -197,9 +212,20 @@
 			children = (
 				361C8FFF4BE8DA1D8B970D4C /* PatreonTV */,
 				EDDFE9D89D91B1EFF786E4D8 /* PatreonTV Relay */,
+				BB0000000000000000000020 /* PatreonTV Top Shelf */,
 				A97BAC3C68B80EA346EAF6AE /* Shared */,
 				13963788F6D4B23B88E93CDD /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		BB0000000000000000000020 /* PatreonTV Top Shelf */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000011 /* ContentProvider.swift */,
+				BB0000000000000000000012 /* Info.plist */,
+				BB0000000000000000000013 /* PatreonTV_Top_Shelf.entitlements */,
+			);
+			path = "PatreonTV Top Shelf";
 			sourceTree = "<group>";
 		};
 		EDDFE9D89D91B1EFF786E4D8 /* PatreonTV Relay */ = {
@@ -246,10 +272,13 @@
 			buildConfigurationList = EC43B7FBE10D26D1F14C98D7 /* Build configuration list for PBXNativeTarget "PatreonTV" */;
 			buildPhases = (
 				B594826BC5F61288174896CF /* Sources */,
+				CC0000000000000000000003 /* Resources */,
+				BB0000000000000000000055 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BB0000000000000000000050 /* PBXTargetDependency */,
 			);
 			name = PatreonTV;
 			packageProductDependencies = (
@@ -258,7 +287,42 @@
 			productReference = F4ECAA1E045615104D57BEE9 /* PatreonTV.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BB0000000000000000000040 /* PatreonTV Top Shelf */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000060 /* Build configuration list for PBXNativeTarget "PatreonTV Top Shelf" */;
+			buildPhases = (
+				BB0000000000000000000030 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PatreonTV Top Shelf";
+			packageProductDependencies = (
+			);
+			productName = "PatreonTV Top Shelf";
+			productReference = BB0000000000000000000015 /* PatreonTV Top Shelf.appex */;
+			productType = "com.apple.product-type.tv-app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		BB0000000000000000000050 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000040 /* PatreonTV Top Shelf */;
+			targetProxy = BB0000000000000000000051 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		BB0000000000000000000051 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 541BC3414DA2244A208C5116 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000040;
+			remoteInfo = "PatreonTV Top Shelf";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		541BC3414DA2244A208C5116 /* Project object */ = {
@@ -272,6 +336,10 @@
 						ProvisioningStyle = Automatic;
 					};
 					C728BAF30CF896222F6D95D2 = {
+						DevelopmentTeam = QRRCB8HB3W;
+						ProvisioningStyle = Automatic;
+					};
+					BB0000000000000000000040 = {
 						DevelopmentTeam = QRRCB8HB3W;
 						ProvisioningStyle = Automatic;
 					};
@@ -293,9 +361,35 @@
 			targets = (
 				C728BAF30CF896222F6D95D2 /* PatreonTV */,
 				16A4D1E0DF06791069F1C67F /* PatreonTV Relay */,
+				BB0000000000000000000040 /* PatreonTV Top Shelf */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB0000000000000000000055 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB0000000000000000000056 /* PatreonTV Top Shelf.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CC0000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CC0000000000000000000002 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		B594826BC5F61288174896CF /* Sources */ = {
@@ -314,6 +408,15 @@
 				7427D2E84613966F2DCCC61E /* PatreonTVApp.swift in Sources */,
 				8D2669DD8EBDC5FC292AD5E0 /* PostCardView.swift in Sources */,
 				B7CBD9F84CAA95FE8F78EC64 /* PostDetailView.swift in Sources */,
+				BB0000000000000000000001 /* PlaybackProgressManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000030 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB0000000000000000000002 /* ContentProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -461,8 +564,10 @@
 		94BEDB46FEE614301A2BF1FC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_ENTITLEMENTS = PatreonTV/Resources/PatreonTV.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = PatreonTV/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -479,8 +584,10 @@
 		BA97E8BDEA79287AA02B2991 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_ENTITLEMENTS = PatreonTV/Resources/PatreonTV.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = PatreonTV/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -489,6 +596,46 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv;
 				SDKROOT = appletvos;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Release;
+		};
+		BB0000000000000000000061 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "PatreonTV Top Shelf/PatreonTV_Top_Shelf.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "PatreonTV Top Shelf/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv.topshelf;
+				SDKROOT = appletvos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
+		};
+		BB0000000000000000000062 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "PatreonTV Top Shelf/PatreonTV_Top_Shelf.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = "PatreonTV Top Shelf/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordankoch.patreontv.topshelf;
+				SDKROOT = appletvos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 17.0;
 			};
@@ -558,6 +705,15 @@
 			buildConfigurations = (
 				94BEDB46FEE614301A2BF1FC /* Debug */,
 				BA97E8BDEA79287AA02B2991 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BB0000000000000000000060 /* Build configuration list for PBXNativeTarget "PatreonTV Top Shelf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB0000000000000000000061 /* Debug */,
+				BB0000000000000000000062 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

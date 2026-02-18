@@ -183,7 +183,7 @@ struct CreatorDetailView: View {
                 await viewModel.loadPosts(campaignId: campaign.id)
             }
             .fullScreenCover(item: $selectedPost) { post in
-                PostDetailView(post: post)
+                PostDetailView(post: post, allPosts: viewModel.posts)
             }
         }
     }

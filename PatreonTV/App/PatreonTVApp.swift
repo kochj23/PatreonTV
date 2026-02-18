@@ -25,7 +25,26 @@ struct PatreonTVApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
         }
+    }
+
+    /// Handle deep links from Top Shelf (patreontv://post/<id>)
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "patreontv",
+              url.host == "post",
+              let postID = url.pathComponents.last, !postID.isEmpty else {
+            print("[PatreonTVApp] Unrecognized deep link: \(url)")
+            return
+        }
+        print("[PatreonTVApp] Deep link to post: \(postID)")
+        NotificationCenter.default.post(
+            name: Notification.Name("DeepLinkToPost"),
+            object: nil,
+            userInfo: ["postID": postID]
+        )
     }
 }
 

@@ -336,7 +336,7 @@ class MediaProxyService: ObservableObject {
 
     /// Resolve a Patreon media URL by following the redirect with session cookie.
     /// The redirect target is a CDN URL that doesn't need authentication.
-    private func resolvePatreonRedirects(url: URL, sessionID: String) async throws -> URL {
+    func resolvePatreonRedirects(url: URL, sessionID: String) async throws -> URL {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15", forHTTPHeaderField: "User-Agent")

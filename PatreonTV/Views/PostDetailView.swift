@@ -76,15 +76,40 @@ class DebugLog: ObservableObject {
 
 // MARK: - PostDetailView
 
+/// Wraps AVPlayerViewController for full-screen native tvOS playback.
+/// Provides transport controls, Siri Remote scrubbing, and skip buttons.
+struct FullScreenPlayerView: UIViewControllerRepresentable {
+    let player: AVPlayer
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let vc = AVPlayerViewController()
+        vc.player = player
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        uiViewController.player = player
+    }
+}
+
 struct PostDetailView: View {
     let post: PatreonPost
+    var allPosts: [PatreonPost]?  // Feed context for Up Next
     @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer?
     @State private var isPlaying = false
+    @State private var showFullScreenPlayer = false
     @State private var mediaError: String?
     @State private var isLoadingMedia = false
     @State private var playerStatusObserver: NSKeyValueObservation?
+    @State private var progressTimeObserver: Any?
+    @State private var endOfPlaybackObserver: NSObjectProtocol?
     @State private var showDebugLog = false
+    // Up Next state
+    @State private var showUpNext = false
+    @State private var upNextPost: PatreonPost?
+    @State private var upNextCountdown = 10
+    @State private var upNextTimer: Timer?
     @ObservedObject private var debugLog = DebugLog.shared
 
     var body: some View {
@@ -218,10 +243,51 @@ struct PostDetailView: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $showFullScreenPlayer) {
+            ZStack {
+                if let player = player {
+                    FullScreenPlayerView(player: player)
+                        .ignoresSafeArea()
+                }
+
+                // Up Next overlay
+                if showUpNext, let nextPost = upNextPost {
+                    UpNextOverlayView(
+                        nextPost: nextPost,
+                        countdown: upNextCountdown,
+                        onPlayNow: { playNextPost(nextPost) },
+                        onCancel: { cancelUpNext() }
+                    )
+                }
+            }
+        }
         .onAppear {
             debugLog.log("PostDetailView appeared for post \(post.id) type=\(post.postType.rawValue)")
         }
         .onDisappear {
+            // Save final playback position before cleanup
+            if let currentTime = player?.currentTime().seconds,
+               let duration = player?.currentItem?.duration.seconds,
+               duration.isFinite, duration > 0 {
+                PlaybackProgressManager.shared.save(
+                    postID: post.id,
+                    position: currentTime,
+                    duration: duration
+                )
+            }
+            // Clean up Up Next
+            upNextTimer?.invalidate()
+            upNextTimer = nil
+            // Remove end-of-playback observer
+            if let observer = endOfPlaybackObserver {
+                NotificationCenter.default.removeObserver(observer)
+                endOfPlaybackObserver = nil
+            }
+            // Remove periodic time observer
+            if let observer = progressTimeObserver {
+                player?.removeTimeObserver(observer)
+                progressTimeObserver = nil
+            }
             playerStatusObserver?.invalidate()
             playerStatusObserver = nil
             player?.pause()
@@ -233,13 +299,33 @@ struct PostDetailView: View {
 
     @ViewBuilder
     private var mediaPlayerView: some View {
-        if let player = player {
-            VideoPlayer(player: player)
-                .frame(height: 500)
-                .cornerRadius(12)
-                .onAppear {
-                    player.play()
+        if player != nil {
+            // Show a compact "Now Playing" bar — full-screen player is in the fullScreenCover
+            HStack(spacing: 16) {
+                Image(systemName: post.hasAudio ? "waveform" : "film")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.white)
+                VStack(alignment: .leading) {
+                    Text(isPlaying ? "Now Playing" : "Loading...")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text(post.displayTitle)
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
                 }
+                Spacer()
+                Button {
+                    showFullScreenPlayer = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 20))
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(24)
+            .background(Color.black.opacity(0.6))
+            .cornerRadius(12)
         } else {
             ZStack {
                 // Background thumbnail
@@ -265,19 +351,27 @@ struct PostDetailView: View {
 
                 // Overlay: error, loading, or play button
                 if let error = mediaError {
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 40))
-                                .foregroundStyle(PatreonColors.yellow)
-                            Text(error)
-                                .font(.system(size: 16, design: .monospaced))
-                                .foregroundStyle(.white)
-                                .multilineTextAlignment(.leading)
-                                .padding(.horizontal, 20)
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(PatreonColors.yellow)
+                        Text(error)
+                            .font(.system(size: 16, design: .monospaced))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.leading)
+                            .padding(.horizontal, 20)
+                        Button {
+                            mediaError = nil
+                            isLoadingMedia = true
+                            loadAndPlayMedia()
+                        } label: {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .font(.system(size: 20, weight: .semibold))
                         }
-                        .padding(20)
+                        .buttonStyle(.bordered)
+                        .tint(.white)
                     }
+                    .padding(20)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(.black.opacity(0.85))
                 } else if isLoadingMedia {
@@ -324,6 +418,9 @@ struct PostDetailView: View {
 
         debugLog.log("=== loadAndPlayMedia (relay proxy) ===")
         debugLog.log("Post ID: \(post.id), type: \(post.postType.rawValue)")
+        debugLog.log("  videoURL: \(post.videoURL ?? "nil")")
+        debugLog.log("  audioURL: \(post.audioURL ?? "nil")")
+        debugLog.log("  embedURL: \(post.embedURL ?? "nil")")
 
         // Get relay server info from AuthManager
         let authManager = AuthManager.shared
@@ -334,27 +431,47 @@ struct PostDetailView: View {
             return
         }
 
-        guard let sessionID = PatreonAPI.shared.sessionID else {
-            debugLog.log("ERROR: No session ID")
-            isLoadingMedia = false
-            mediaError = "Not authenticated. Please log in again."
-            return
-        }
-
         let relayHost = authManager.relayServerHost
         let relayPort = authManager.relayServerPort
 
-        // Construct relay proxy URL with session ID as query param
-        // (query param is more reliable than custom headers on tvOS AVPlayer)
-        let streamURLString = "http://\(relayHost):\(relayPort)/api/media/stream/\(post.id)?sid=\(sessionID)"
-        guard let streamURL = URL(string: streamURLString) else {
+        // Build relay proxy URL with media info as query params.
+        // The Apple TV already has post data from the feed, so we pass the URLs
+        // directly to avoid the relay needing to re-fetch from Patreon API.
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = relayHost
+        components.port = relayPort
+        components.path = "/api/media/stream/\(post.id)"
+
+        var queryItems: [URLQueryItem] = []
+
+        // Pass media URLs the Apple TV already has
+        if let videoURL = post.videoURL {
+            queryItems.append(URLQueryItem(name: "video_url", value: videoURL))
+        }
+        if let audioURL = post.audioURL {
+            queryItems.append(URLQueryItem(name: "audio_url", value: audioURL))
+        }
+        if let embedURL = post.embedURL {
+            queryItems.append(URLQueryItem(name: "embed_url", value: embedURL))
+        }
+        queryItems.append(URLQueryItem(name: "type", value: post.postType.rawValue))
+
+        // Pass session ID as fallback (relay prefers its own stored session)
+        if let sessionID = PatreonAPI.shared.sessionID {
+            queryItems.append(URLQueryItem(name: "sid", value: sessionID))
+        }
+
+        components.queryItems = queryItems
+
+        guard let streamURL = components.url else {
             debugLog.log("ERROR: Could not construct stream URL")
             isLoadingMedia = false
             mediaError = "Internal error constructing stream URL"
             return
         }
 
-        debugLog.log("Stream URL: http://\(relayHost):\(relayPort)/api/media/stream/\(post.id)?sid=<redacted>")
+        debugLog.log("Stream URL: http://\(relayHost):\(relayPort)/api/media/stream/\(post.id)?type=\(post.postType.rawValue)&...")
 
         // Create AVPlayer pointing at the relay proxy
         let asset = AVURLAsset(url: streamURL)
@@ -378,7 +495,7 @@ struct PostDetailView: View {
                     self.player = nil
                     self.isPlaying = false
                     self.showDebugLog = true
-                    self.mediaError = "Playback failed: \(errorMsg)"
+                    self.mediaError = "Playback failed: \(errorMsg)\n\nPress Retry to try again."
                 case .readyToPlay:
                     self.debugLog.log("AVPlayerItem READY — duration: \(item.duration.seconds)s")
                 case .unknown:
@@ -394,6 +511,183 @@ struct PostDetailView: View {
         player?.play()
         isPlaying = true
         isLoadingMedia = false
+
+        // Resume from saved position if available
+        if let savedProgress = PlaybackProgressManager.shared.getProgress(postID: post.id) {
+            let seekTime = CMTime(seconds: savedProgress.position, preferredTimescale: 1)
+            debugLog.log("Resuming from saved position: \(Int(savedProgress.position))s")
+            player?.seek(to: seekTime)
+        }
+
+        // Periodically save playback position (every 5 seconds)
+        progressTimeObserver = player?.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 5, preferredTimescale: 1),
+            queue: .main
+        ) { [postID = post.id] time in
+            guard let duration = self.player?.currentItem?.duration.seconds,
+                  duration.isFinite, duration > 0 else { return }
+            PlaybackProgressManager.shared.save(
+                postID: postID,
+                position: time.seconds,
+                duration: duration
+            )
+        }
+
+        // Register end-of-playback observer for Up Next
+        endOfPlaybackObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem,
+            queue: .main
+        ) { [postID = post.id] _ in
+            // Mark as fully watched
+            PlaybackProgressManager.shared.removeProgress(postID: postID)
+
+            // Find next playable post in feed
+            if let allPosts = self.allPosts,
+               let currentIndex = allPosts.firstIndex(where: { $0.id == postID }),
+               currentIndex + 1 < allPosts.count {
+                let nextCandidate = allPosts[(currentIndex + 1)...]
+                if let nextPlayable = nextCandidate.first(where: { $0.hasVideo || $0.hasAudio }) {
+                    self.upNextPost = nextPlayable
+                    self.upNextCountdown = 10
+                    self.showUpNext = true
+                    self.startUpNextCountdown()
+                }
+            }
+        }
+
+        // Auto-present full-screen player
+        showFullScreenPlayer = true
+    }
+
+    // MARK: - Up Next
+
+    private func startUpNextCountdown() {
+        upNextTimer?.invalidate()
+        upNextTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            DispatchQueue.main.async {
+                if self.upNextCountdown > 1 {
+                    self.upNextCountdown -= 1
+                } else {
+                    // Countdown finished — auto-play next
+                    if let nextPost = self.upNextPost {
+                        self.playNextPost(nextPost)
+                    }
+                }
+            }
+        }
+    }
+
+    private func playNextPost(_ nextPost: PatreonPost) {
+        cancelUpNext()
+
+        // Stop current player
+        player?.pause()
+        if let observer = progressTimeObserver {
+            player?.removeTimeObserver(observer)
+            progressTimeObserver = nil
+        }
+        if let observer = endOfPlaybackObserver {
+            NotificationCenter.default.removeObserver(observer)
+            endOfPlaybackObserver = nil
+        }
+        playerStatusObserver?.invalidate()
+        playerStatusObserver = nil
+        player = nil
+        isPlaying = false
+        showFullScreenPlayer = false
+
+        // Dismiss current view — the parent will present the next post
+        // For now, dismiss and let the feed handle navigation
+        dismiss()
+
+        // Post notification so FeedView can auto-open the next post
+        NotificationCenter.default.post(
+            name: Notification.Name("PlayNextPost"),
+            object: nil,
+            userInfo: ["postID": nextPost.id]
+        )
+    }
+
+    private func cancelUpNext() {
+        upNextTimer?.invalidate()
+        upNextTimer = nil
+        showUpNext = false
+        upNextPost = nil
+    }
+}
+
+// MARK: - Up Next Overlay View
+
+struct UpNextOverlayView: View {
+    let nextPost: PatreonPost
+    let countdown: Int
+    let onPlayNow: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            HStack(spacing: 24) {
+                // Next post info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Up Next in \(countdown)...")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    Text(nextPost.displayTitle)
+                        .font(.system(size: 20))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(2)
+
+                    if let campaign = nextPost.campaign {
+                        Text(campaign.name)
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+
+                Spacer()
+
+                // Thumbnail
+                if let thumbnailURL = nextPost.thumbnailURL ?? nextPost.imageURL,
+                   let url = URL(string: thumbnailURL) {
+                    AsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(16/9, contentMode: .fill)
+                    } placeholder: {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                    }
+                    .frame(width: 200, height: 112)
+                    .cornerRadius(8)
+                }
+
+                // Buttons
+                VStack(spacing: 12) {
+                    Button(action: onPlayNow) {
+                        Label("Play Now", systemImage: "play.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+
+                    Button(action: onCancel) {
+                        Text("Cancel")
+                            .font(.system(size: 18))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .padding(30)
+            .background(.ultraThinMaterial)
+            .cornerRadius(16)
+            .padding(.horizontal, 60)
+            .padding(.bottom, 40)
+        }
     }
 }
 

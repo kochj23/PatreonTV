@@ -1,0 +1,3 @@
+theme: jekyll-theme-cayman
+title: "PatreonTV"
+description: "Watch Patreon creators on Apple TV. Relay server acts as media proxy with yt-dlp for YouTube/Vimeo. Native tvOS + macOS SwiftUI apps."

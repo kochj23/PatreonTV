@@ -14,7 +14,7 @@ import SwiftUI
 struct PostCardView: View {
     let post: PatreonPost
     let onSelect: () -> Void
-    @Environment(\.isFocused) private var isFocused
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         Button(action: onSelect) {
@@ -33,23 +33,23 @@ struct PostCardView: View {
                         case .empty:
                             ProgressView()
                                 .frame(maxWidth: .infinity)
-                                .aspectRatio(16/9, contentMode: .fill)
+                                .frame(height: 220)
                         @unknown default:
                             placeholderImage
                         }
                     }
-                    .frame(height: 300)
+                    .frame(height: 220)
                     .clipped()
                 } else {
                     placeholderImage
-                        .frame(height: 200)
+                        .frame(height: 160)
                 }
 
                 // Content
-                VStack(alignment: .leading, spacing: 16) {
-                    // Creator info
+                VStack(alignment: .leading, spacing: 12) {
+                    // Creator info row
                     if let campaign = post.campaign {
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
                             if let avatarURL = campaign.avatarURL,
                                let url = URL(string: avatarURL) {
                                 AsyncImage(url: url) { image in
@@ -60,13 +60,13 @@ struct PostCardView: View {
                                     Circle()
                                         .fill(Color.gray.opacity(0.3))
                                 }
-                                .frame(width: 40, height: 40)
+                                .frame(width: 32, height: 32)
                                 .clipShape(Circle())
                             }
 
                             Text(campaign.name)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 18))
+                                .foregroundStyle(PatreonColors.textSecondary)
 
                             Spacer()
 
@@ -77,68 +77,75 @@ struct PostCardView: View {
 
                     // Title
                     Text(post.displayTitle)
-                        .font(.title3)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(PatreonColors.textPrimary)
                         .lineLimit(2)
 
                     // Preview text
                     if let preview = post.previewText {
                         Text(preview)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
+                            .font(.system(size: 18))
+                            .foregroundStyle(PatreonColors.textSecondary)
+                            .lineLimit(2)
                     }
 
                     // Footer
                     HStack {
-                        // Date
                         if let date = post.publishedAt {
                             Text(date, style: .relative)
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .font(.system(size: 16))
+                                .foregroundStyle(PatreonColors.textTertiary)
                         }
 
                         Spacer()
 
-                        // Engagement
-                        HStack(spacing: 16) {
+                        HStack(spacing: 14) {
                             if post.likeCount > 0 {
                                 Label("\(post.likeCount)", systemImage: "heart.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(PatreonColors.textTertiary)
                             }
-
                             if post.commentCount > 0 {
                                 Label("\(post.commentCount)", systemImage: "bubble.right.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(PatreonColors.textTertiary)
                             }
                         }
                     }
                 }
-                .padding(24)
+                .padding(20)
             }
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(PatreonColors.glassBorder, lineWidth: 1)
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
         }
-        .buttonStyle(TVCardButtonStyle())
+        .buttonStyle(.card)
+        .focused($isFocused)
+        .scaleEffect(isFocused ? 1.05 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isFocused)
     }
 
     private var placeholderImage: some View {
         ZStack {
             Rectangle()
-                .fill(Color.gray.opacity(0.2))
+                .fill(Color.gray.opacity(0.15))
 
             Image(systemName: iconForPostType)
-                .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 40))
+                .foregroundStyle(PatreonColors.textTertiary)
         }
     }
 
     private var iconForPostType: String {
         switch post.postType {
-        case .video: return "play.rectangle.fill"
-        case .audio: return "waveform"
+        case .video, .videoFile, .livestream, .livestreamYoutube: return "play.rectangle.fill"
+        case .audio, .audioEmbed: return "waveform"
         case .image: return "photo.fill"
         case .text: return "doc.text.fill"
         case .link: return "link"
@@ -153,59 +160,39 @@ struct PostCardView: View {
             Image(systemName: iconForPostType)
             Text(badgeText)
         }
-        .font(.caption2)
+        .font(.system(size: 14))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(badgeColor.opacity(0.2))
         .foregroundStyle(badgeColor)
-        .cornerRadius(4)
+        .cornerRadius(6)
     }
 
     private var badgeText: String {
         switch post.postType {
         case .video: return "Video"
-        case .audio: return "Audio"
+        case .videoFile: return "Video"
+        case .audio, .audioEmbed: return "Audio"
         case .image: return "Image"
         case .text: return "Text"
         case .link: return "Link"
         case .poll: return "Poll"
+        case .livestream: return "Live"
+        case .livestreamYoutube: return "YouTube"
         case .unknown: return "Post"
         }
     }
 
     private var badgeColor: Color {
         switch post.postType {
-        case .video: return .red
-        case .audio: return .purple
-        case .image: return .blue
-        case .text: return .green
-        case .link: return .orange
-        case .poll: return .yellow
+        case .video, .videoFile, .livestream, .livestreamYoutube: return PatreonColors.videoColor
+        case .audio, .audioEmbed: return PatreonColors.audioColor
+        case .image: return PatreonColors.imageColor
+        case .text: return PatreonColors.textColor
+        case .link: return PatreonColors.linkColor
+        case .poll: return PatreonColors.pollColor
         case .unknown: return .gray
         }
-    }
-}
-
-// MARK: - TV Card Button Style
-
-/// Custom button style for tvOS cards with focus scaling and shadow
-struct TVCardButtonStyle: ButtonStyle {
-    @Environment(\.isFocused) private var isFocused
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : isFocused ? 1.05 : 1.0)
-            .shadow(
-                color: isFocused ? Color.white.opacity(0.3) : Color.clear,
-                radius: isFocused ? 20 : 0,
-                y: isFocused ? 10 : 0
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isFocused ? Color.white.opacity(0.6) : Color.clear, lineWidth: 3)
-            )
-            .animation(.easeInOut(duration: 0.15), value: isFocused)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 

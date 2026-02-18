@@ -16,86 +16,100 @@ import SwiftUI
 /// Card view for displaying a creator in the grid
 struct CreatorCardView: View {
     let campaign: PatreonCampaign
+    let onSelect: () -> Void
+    @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Cover image
-            if let coverURL = campaign.coverPhotoURL ?? campaign.avatarURL,
-               let url = URL(string: coverURL) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(16/9, contentMode: .fill)
-                } placeholder: {
+        Button(action: onSelect) {
+            VStack(spacing: 0) {
+                // Cover image
+                if let coverURL = campaign.coverPhotoURL ?? campaign.avatarURL,
+                   let url = URL(string: coverURL) {
+                    AsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(16/9, contentMode: .fill)
+                    } placeholder: {
+                        Rectangle()
+                            .fill(PatreonColors.coral.opacity(0.2))
+                    }
+                    .frame(height: 130)
+                    .clipped()
+                } else {
                     Rectangle()
-                        .fill(Color.orange.opacity(0.3))
-                }
-                .frame(height: 150)
-                .clipped()
-            } else {
-                Rectangle()
-                    .fill(Color.orange.opacity(0.3))
-                    .frame(height: 150)
-                    .overlay {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 50))
-                            .foregroundStyle(.white.opacity(0.5))
-                    }
-            }
-
-            // Info
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    // Avatar
-                    if let avatarURL = campaign.avatarURL,
-                       let url = URL(string: avatarURL) {
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Circle()
-                                .fill(Color.gray.opacity(0.3))
+                        .fill(PatreonColors.coral.opacity(0.2))
+                        .frame(height: 130)
+                        .overlay {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(PatreonColors.textTertiary)
                         }
-                        .frame(width: 50, height: 50)
-                        .clipShape(Circle())
-                        .offset(y: -25)
+                }
+
+                // Info
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        // Avatar
+                        if let avatarURL = campaign.avatarURL,
+                           let url = URL(string: avatarURL) {
+                            AsyncImage(url: url) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.3))
+                            }
+                            .frame(width: 40, height: 40)
+                            .clipShape(Circle())
+                            .offset(y: -20)
+                        }
+                        Spacer()
                     }
 
-                    Spacer()
-                }
-
-                // Name
-                Text(campaign.name)
-                    .font(.headline)
-                    .lineLimit(1)
-
-                // Creation name or summary
-                if let creationName = campaign.creationName {
-                    Text("Creating \(creationName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    // Name
+                    Text(campaign.name)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(PatreonColors.textPrimary)
                         .lineLimit(1)
-                } else if let summary = campaign.summary {
-                    Text(summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
 
-                // Patron count
-                if let patronCount = campaign.patronCount {
-                    Text("\(patronCount) patrons")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    // Creation name or summary
+                    if let creationName = campaign.creationName {
+                        Text("Creating \(creationName)")
+                            .font(.system(size: 16))
+                            .foregroundStyle(PatreonColors.textSecondary)
+                            .lineLimit(1)
+                    } else if let summary = campaign.summary {
+                        Text(summary)
+                            .font(.system(size: 16))
+                            .foregroundStyle(PatreonColors.textSecondary)
+                            .lineLimit(2)
+                    }
+
+                    // Patron count
+                    if let patronCount = campaign.patronCount {
+                        Text("\(patronCount) patrons")
+                            .font(.system(size: 14))
+                            .foregroundStyle(PatreonColors.textTertiary)
+                    }
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(PatreonColors.glassBorder, lineWidth: 1)
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
         }
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
-        .focusable()
+        .buttonStyle(.card)
+        .focused($isFocused)
+        .scaleEffect(isFocused ? 1.05 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isFocused)
     }
 }
 
@@ -110,46 +124,52 @@ struct CreatorDetailView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 40) {
-                    // Header
-                    headerView
+            ZStack {
+                GlassmorphicBackground()
 
-                    // Posts
-                    if viewModel.isLoading && viewModel.posts.isEmpty {
-                        ProgressView("Loading posts...")
-                            .padding(.top, 60)
-                    } else if viewModel.posts.isEmpty {
-                        emptyStateView
-                    } else {
-                        LazyVStack(spacing: 60) {
-                            ForEach(viewModel.posts) { post in
-                                PostCardView(post: post) {
-                                    selectedPost = post
-                                }
-                                .frame(maxWidth: 900)
-                            }
+                ScrollView {
+                    VStack(spacing: 40) {
+                        // Header
+                        headerView
 
-                            // Load more
-                            if viewModel.hasMore {
-                                Button {
-                                    Task {
-                                        await viewModel.loadMore(campaignId: campaign.id)
+                        // Posts
+                        if viewModel.isLoading && viewModel.posts.isEmpty {
+                            ProgressView("Loading posts...")
+                                .padding(.top, 60)
+                        } else if viewModel.posts.isEmpty {
+                            emptyStateView
+                        } else {
+                            LazyVStack(spacing: 80) {
+                                ForEach(viewModel.posts) { post in
+                                    PostCardView(post: post) {
+                                        selectedPost = post
                                     }
-                                } label: {
-                                    if viewModel.isLoading {
-                                        ProgressView()
-                                    } else {
-                                        Text("Load More")
-                                    }
+                                    .frame(maxWidth: 800)
                                 }
-                                .buttonStyle(.bordered)
-                                .padding(.vertical, 30)
+
+                                // Load more
+                                if viewModel.hasMore {
+                                    Button {
+                                        Task {
+                                            await viewModel.loadMore(campaignId: campaign.id)
+                                        }
+                                    } label: {
+                                        if viewModel.isLoading {
+                                            ProgressView()
+                                        } else {
+                                            Text("Load More")
+                                                .font(.system(size: 22))
+                                        }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .padding(.vertical, 30)
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, 80)
+                    .padding(.vertical, 60)
                 }
-                .padding(60)
             }
             .navigationTitle(campaign.name)
             .toolbar {
@@ -162,7 +182,7 @@ struct CreatorDetailView: View {
             .task {
                 await viewModel.loadPosts(campaignId: campaign.id)
             }
-            .sheet(item: $selectedPost) { post in
+            .fullScreenCover(item: $selectedPost) { post in
                 PostDetailView(post: post)
             }
         }
@@ -179,14 +199,14 @@ struct CreatorDetailView: View {
                         .aspectRatio(21/9, contentMode: .fill)
                 } placeholder: {
                     Rectangle()
-                        .fill(Color.orange.opacity(0.3))
+                        .fill(PatreonColors.coral.opacity(0.2))
                 }
-                .frame(height: 300)
+                .frame(height: 250)
                 .clipped()
                 .cornerRadius(20)
             }
 
-            HStack(spacing: 20) {
+            HStack(spacing: 16) {
                 // Avatar
                 if let avatarURL = campaign.avatarURL,
                    let url = URL(string: avatarURL) {
@@ -198,25 +218,25 @@ struct CreatorDetailView: View {
                         Circle()
                             .fill(Color.gray.opacity(0.3))
                     }
-                    .frame(width: 100, height: 100)
+                    .frame(width: 80, height: 80)
                     .clipShape(Circle())
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(campaign.name)
-                        .font(.title)
-                        .fontWeight(.bold)
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundStyle(PatreonColors.textPrimary)
 
                     if let creationName = campaign.creationName {
                         Text("Creating \(creationName)")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 22))
+                            .foregroundStyle(PatreonColors.textSecondary)
                     }
 
                     if let patronCount = campaign.patronCount {
                         Text("\(patronCount) patrons")
-                            .font(.subheadline)
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 18))
+                            .foregroundStyle(PatreonColors.textTertiary)
                     }
                 }
 
@@ -226,8 +246,8 @@ struct CreatorDetailView: View {
             // Summary
             if let summary = campaign.summary {
                 Text(summary)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 20))
+                    .foregroundStyle(PatreonColors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -236,15 +256,16 @@ struct CreatorDetailView: View {
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Image(systemName: "doc.text")
-                .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 50))
+                .foregroundStyle(PatreonColors.textTertiary)
 
             Text("No posts yet")
-                .font(.title3)
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(PatreonColors.textPrimary)
 
             Text("This creator hasn't posted any content yet")
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 20))
+                .foregroundStyle(PatreonColors.textSecondary)
         }
         .padding(.top, 60)
     }
@@ -309,7 +330,7 @@ class CreatorDetailViewModel: ObservableObject {
         summary: "Creating awesome content for everyone!",
         creationName: "videos and podcasts",
         patronCount: 1234
-    ))
+    ), onSelect: {})
     .frame(width: 350)
     .padding()
 }

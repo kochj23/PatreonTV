@@ -50,7 +50,7 @@ struct RelayServerView: View {
             VStack(alignment: .leading) {
                 Text("PatreonTV Relay")
                     .font(.headline)
-                Text("Authentication Server")
+                Text("Authentication & Media Proxy Server")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -164,6 +164,59 @@ struct RelayServerView: View {
                         }
                     }
                 }
+            }
+
+            // Media Proxy Status
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Media Proxy")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Text("Active Streams")
+                    Spacer()
+                    Text("\(serverManager.activeStreamCount)")
+                        .foregroundStyle(serverManager.activeStreamCount > 0 ? .blue : .secondary)
+                        .fontWeight(serverManager.activeStreamCount > 0 ? .medium : .regular)
+                }
+                .font(.caption)
+
+                HStack {
+                    Text("Bytes Proxied")
+                    Spacer()
+                    Text(ByteCountFormatter.string(fromByteCount: Int64(serverManager.totalBytesProxied), countStyle: .file))
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
+
+                HStack {
+                    Text("yt-dlp")
+                    Spacer()
+                    if MediaProxyService.shared.ytdlpAvailable {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text("Available")
+                                .foregroundStyle(.green)
+                        }
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.red)
+                            Text("Not Found")
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+                .font(.caption)
+
+                HStack {
+                    Text("URL Cache")
+                    Spacer()
+                    Text("Hits: \(MediaProxyService.shared.cacheHits) / Misses: \(MediaProxyService.shared.cacheMisses)")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
             }
 
             Spacer()

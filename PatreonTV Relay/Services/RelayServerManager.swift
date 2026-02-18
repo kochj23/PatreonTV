@@ -27,6 +27,11 @@ class RelayServerManager: ObservableObject {
     @Published var pendingLoginCode: String?
     @Published var showLoginSheet = false
 
+    // Media proxy stats
+    @Published var activeStreamCount: Int = 0
+    @Published var totalBytesProxied: UInt64 = 0
+
+    private let mediaProxy = MediaProxyService.shared
     private var listener: NWListener?
     private var connections: [NWConnection] = []
     private var bonjourService: NWListener?
@@ -253,6 +258,23 @@ class RelayServerManager: ObservableObject {
         }
     }
 
+    /// Parse all HTTP headers from raw request data into a dictionary
+    private func parseRequestHeaders(from requestString: String) -> [String: String] {
+        var headers: [String: String] = [:]
+        let lines = requestString.components(separatedBy: "\r\n")
+        // Skip request line (first line), parse until empty line
+        for i in 1..<lines.count {
+            let line = lines[i]
+            if line.isEmpty { break }
+            if let colonIndex = line.firstIndex(of: ":") {
+                let key = String(line[..<colonIndex]).trimmingCharacters(in: .whitespaces).lowercased()
+                let value = String(line[line.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
+                headers[key] = value
+            }
+        }
+        return headers
+    }
+
     /// Extract Content-Length header value from HTTP headers
     private func extractContentLength(from headers: String) -> Int {
         for line in headers.components(separatedBy: "\r\n") {
@@ -310,6 +332,10 @@ class RelayServerManager: ObservableObject {
 
         case ("GET", "/health"):
             sendResponse(connection: connection, status: "200 OK", contentType: "application/json", body: "{\"status\":\"ok\"}")
+
+        case ("GET", let p) where p.hasPrefix("/api/media/stream/"):
+            let requestString = String(data: data, encoding: .utf8) ?? ""
+            handleMediaStream(path: p, requestString: requestString, connection: connection)
 
         default:
             sendResponse(connection: connection, status: "404 Not Found", body: "Not Found")
@@ -727,6 +753,141 @@ class RelayServerManager: ObservableObject {
         log("Pairing completed for code: \(code) (via native login)", type: .success)
     }
 
+    // MARK: - Media Streaming Proxy
+
+    private func handleMediaStream(path: String, requestString: String, connection: NWConnection) {
+        // Extract post ID — supports /api/media/stream/<postID> and /api/media/stream/<postID>?sid=<token>
+        let pathAfterPrefix = String(path.dropFirst("/api/media/stream/".count))
+        let postID = pathAfterPrefix.components(separatedBy: "?").first ?? pathAfterPrefix
+
+        guard !postID.isEmpty else {
+            sendResponse(connection: connection, status: "400 Bad Request",
+                         contentType: "application/json", body: "{\"error\":\"Missing post ID\"}")
+            return
+        }
+
+        let headers = parseRequestHeaders(from: requestString)
+        let rangeHeader = headers["range"]
+
+        // Session ID: try header first, then query param fallback
+        var sessionID = headers["x-session-id"]
+        if sessionID == nil || sessionID!.isEmpty {
+            // Parse ?sid=<token> from path
+            if let queryStart = pathAfterPrefix.range(of: "?") {
+                let query = String(pathAfterPrefix[queryStart.upperBound...])
+                for param in query.components(separatedBy: "&") {
+                    let parts = param.components(separatedBy: "=")
+                    if parts.count == 2, parts[0] == "sid" {
+                        sessionID = parts[1]
+                    }
+                }
+            }
+        }
+
+        guard let sessionID = sessionID, !sessionID.isEmpty else {
+            sendResponse(connection: connection, status: "401 Unauthorized",
+                         contentType: "application/json", body: "{\"error\":\"Missing session ID. Pass X-Session-ID header or ?sid= query parameter.\"}")
+            return
+        }
+
+        log("STREAM post=\(postID) range=\(rangeHeader ?? "none")", type: .info)
+        activeStreamCount += 1
+
+        Task {
+            do {
+                let (mediaURL, source) = try await mediaProxy.resolveMediaURL(postID: postID, sessionID: sessionID)
+                log("Resolved \(postID) via \(source.rawValue)", type: .success)
+
+                await proxyUpstreamMedia(
+                    mediaURL: mediaURL,
+                    rangeHeader: rangeHeader,
+                    sessionID: sessionID,
+                    connection: connection
+                )
+            } catch let error as MediaProxyService.MediaProxyError {
+                let (status, message) = mediaProxyErrorResponse(error)
+                log("Stream error for \(postID): \(message)", type: .error)
+                sendResponse(connection: connection, status: status,
+                             contentType: "application/json", body: "{\"error\":\"\(message)\"}")
+                activeStreamCount -= 1
+            } catch {
+                log("Stream error for \(postID): \(error.localizedDescription)", type: .error)
+                sendResponse(connection: connection, status: "502 Bad Gateway",
+                             contentType: "application/json",
+                             body: "{\"error\":\"Media resolution failed: \(error.localizedDescription)\"}")
+                activeStreamCount -= 1
+            }
+        }
+    }
+
+    private func mediaProxyErrorResponse(_ error: MediaProxyService.MediaProxyError) -> (String, String) {
+        switch error {
+        case .postNotFound:
+            return ("404 Not Found", "Post not found")
+        case .noSessionID:
+            return ("401 Unauthorized", "No session ID")
+        case .noPlayableMedia:
+            return ("404 Not Found", "No playable media found for this post")
+        case .ytdlpNotInstalled:
+            return ("501 Not Implemented", "yt-dlp not installed on relay server. Install with: brew install yt-dlp")
+        case .ytdlpFailed(let msg):
+            let safe = msg.prefix(200).replacingOccurrences(of: "\"", with: "'")
+            return ("502 Bad Gateway", "yt-dlp failed: \(safe)")
+        case .resolutionFailed(let msg):
+            let safe = msg.prefix(200).replacingOccurrences(of: "\"", with: "'")
+            return ("502 Bad Gateway", "Resolution failed: \(safe)")
+        case .upstreamError(let code):
+            return ("\(code) Upstream Error", "Patreon API returned HTTP \(code)")
+        }
+    }
+
+    /// Proxy upstream media response to the client connection, streaming chunks as they arrive
+    private func proxyUpstreamMedia(
+        mediaURL: URL,
+        rangeHeader: String?,
+        sessionID: String,
+        connection: NWConnection
+    ) async {
+        var request = URLRequest(url: mediaURL)
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15", forHTTPHeaderField: "User-Agent")
+
+        // Forward Range header for seeking support
+        if let range = rangeHeader {
+            request.setValue(range, forHTTPHeaderField: "Range")
+        }
+
+        // If it's a Patreon URL, include session cookie
+        if let host = mediaURL.host, host.contains("patreon") {
+            request.setValue("session_id=\(sessionID)", forHTTPHeaderField: "Cookie")
+            request.setValue("https://www.patreon.com", forHTTPHeaderField: "Referer")
+        }
+
+        let streamDelegate = MediaStreamDelegate(
+            connection: connection,
+            logHandler: { [weak self] msg, type in
+                Task { @MainActor in
+                    self?.log(msg, type: type)
+                }
+            },
+            onComplete: { [weak self] bytesTransferred in
+                Task { @MainActor in
+                    self?.activeStreamCount -= 1
+                    self?.totalBytesProxied += bytesTransferred
+                }
+            }
+        )
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 7200 // 2 hours for long videos
+        let session = URLSession(configuration: config, delegate: streamDelegate, delegateQueue: nil)
+
+        let task = session.dataTask(with: request)
+        task.resume()
+
+        // Delegate handles everything from here — streaming, cleanup, session invalidation
+    }
+
     // MARK: - Cleanup
 
     func cleanupExpiredSessions() {
@@ -735,5 +896,115 @@ class RelayServerManager: ObservableObject {
             pairingSessions.removeValue(forKey: code)
             log("Cleaned up expired session: \(code)", type: .info)
         }
+        MediaProxyService.shared.clearExpiredCache()
+    }
+}
+
+// MARK: - Media Stream Delegate
+
+/// URLSessionDataDelegate that receives upstream media data and forwards it
+/// chunk-by-chunk to an NWConnection (the Apple TV client).
+/// Handles response header forwarding, body streaming, and cleanup.
+private class MediaStreamDelegate: NSObject, URLSessionDataDelegate {
+    let connection: NWConnection
+    let logHandler: (String, RelayServerManager.LogEntry.LogType) -> Void
+    let onComplete: (UInt64) -> Void
+    private var headersSent = false
+    private var bytesTransferred: UInt64 = 0
+    private weak var urlSession: URLSession?
+
+    init(
+        connection: NWConnection,
+        logHandler: @escaping (String, RelayServerManager.LogEntry.LogType) -> Void,
+        onComplete: @escaping (UInt64) -> Void
+    ) {
+        self.connection = connection
+        self.logHandler = logHandler
+        self.onComplete = onComplete
+    }
+
+    // Received initial response headers from upstream — forward to client
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        self.urlSession = session
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            completionHandler(.cancel)
+            return
+        }
+
+        let statusCode = httpResponse.statusCode
+        let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode)
+
+        // Build HTTP response headers to forward
+        var responseHeader = "HTTP/1.1 \(statusCode) \(statusText)\r\n"
+
+        // Forward essential media headers
+        let forwardKeys: Set<String> = ["content-type", "content-length", "content-range", "accept-ranges"]
+        for (key, value) in httpResponse.allHeaderFields {
+            let keyStr = "\(key)".lowercased()
+            if forwardKeys.contains(keyStr) {
+                responseHeader += "\(key): \(value)\r\n"
+            }
+        }
+
+        responseHeader += "Access-Control-Allow-Origin: *\r\n"
+        responseHeader += "Connection: close\r\n"
+        responseHeader += "\r\n"
+
+        let contentLength = httpResponse.value(forHTTPHeaderField: "Content-Length") ?? "?"
+        let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "?"
+        logHandler("Upstream \(statusCode) \(contentType) (\(contentLength) bytes)", .info)
+
+        // Send response headers to the client
+        connection.send(content: responseHeader.data(using: .utf8), completion: .contentProcessed { [weak self] error in
+            if let error = error {
+                self?.logHandler("Error sending headers: \(error)", .error)
+                self?.cleanup(session: session)
+            }
+        })
+
+        headersSent = true
+        completionHandler(.allow)
+    }
+
+    // Received a chunk of data from upstream — forward to client
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        bytesTransferred += UInt64(data.count)
+
+        connection.send(content: data, completion: .contentProcessed { [weak self] error in
+            if let error = error {
+                self?.logHandler("Client disconnected: \(error)", .warning)
+                // Client disconnected — cancel upstream to stop wasting bandwidth
+                dataTask.cancel()
+                self?.cleanup(session: session)
+            }
+        })
+    }
+
+    // Upstream request completed (or failed)
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error = error {
+            let nsError = error as NSError
+            // Don't log cancellation as error (happens when client disconnects)
+            if nsError.code != NSURLErrorCancelled {
+                logHandler("Upstream error: \(error.localizedDescription)", .warning)
+            }
+            if !headersSent {
+                let errorResponse = "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n{\"error\":\"Upstream request failed\"}"
+                connection.send(content: errorResponse.data(using: .utf8), completion: .contentProcessed { _ in })
+            }
+        }
+
+        let formatted = ByteCountFormatter.string(fromByteCount: Int64(bytesTransferred), countStyle: .file)
+        logHandler("Stream complete: \(formatted) transferred", .success)
+        cleanup(session: session)
+    }
+
+    private func cleanup(session: URLSession) {
+        connection.send(content: nil, contentContext: .finalMessage, isComplete: true, completion: .contentProcessed { [weak self] _ in
+            self?.connection.cancel()
+        })
+        session.finishTasksAndInvalidate()
+        onComplete(bytesTransferred)
     }
 }

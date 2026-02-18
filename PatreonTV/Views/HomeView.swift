@@ -17,27 +17,31 @@ struct HomeView: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Feed Tab
-            FeedView(viewModel: viewModel)
-                .tabItem {
-                    Label("Feed", systemImage: "rectangle.stack.fill")
-                }
-                .tag(0)
+        ZStack {
+            GlassmorphicBackground()
 
-            // Creators Tab
-            CreatorsView(viewModel: viewModel)
-                .tabItem {
-                    Label("Creators", systemImage: "person.2.fill")
-                }
-                .tag(1)
+            TabView(selection: $selectedTab) {
+                // Feed Tab
+                FeedView(viewModel: viewModel)
+                    .tabItem {
+                        Label("Feed", systemImage: "rectangle.stack.fill")
+                    }
+                    .tag(0)
 
-            // Settings Tab
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(2)
+                // Creators Tab
+                CreatorsView(viewModel: viewModel)
+                    .tabItem {
+                        Label("Creators", systemImage: "person.2.fill")
+                    }
+                    .tag(1)
+
+                // Settings Tab
+                SettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gear")
+                    }
+                    .tag(2)
+            }
         }
         .task {
             await viewModel.loadInitialData()
@@ -54,7 +58,7 @@ struct FeedView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 60) {
+                LazyVStack(spacing: 80) {
                     if viewModel.isLoadingFeed && viewModel.feedPosts.isEmpty {
                         ProgressView("Loading feed...")
                             .padding(.top, 100)
@@ -65,7 +69,7 @@ struct FeedView: View {
                             PostCardView(post: post) {
                                 selectedPost = post
                             }
-                            .frame(maxWidth: 900)
+                            .frame(maxWidth: 800)
                         }
 
                         // Load more button
@@ -79,6 +83,7 @@ struct FeedView: View {
                                     ProgressView()
                                 } else {
                                     Text("Load More")
+                                        .font(.system(size: 22))
                                 }
                             }
                             .buttonStyle(.bordered)
@@ -86,13 +91,14 @@ struct FeedView: View {
                         }
                     }
                 }
-                .padding(60)
+                .padding(.horizontal, 80)
+                .padding(.vertical, 60)
             }
             .navigationTitle("Your Feed")
             .refreshable {
                 await viewModel.refreshFeed()
             }
-            .sheet(item: $selectedPost) { post in
+            .fullScreenCover(item: $selectedPost) { post in
                 PostDetailView(post: post)
             }
         }
@@ -101,15 +107,16 @@ struct FeedView: View {
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Image(systemName: "tray")
-                .font(.system(size: 80))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 60))
+                .foregroundStyle(PatreonColors.textTertiary)
 
             Text("No posts yet")
-                .font(.title2)
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(PatreonColors.textPrimary)
 
             Text("Posts from creators you support will appear here")
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 22))
+                .foregroundStyle(PatreonColors.textSecondary)
         }
         .padding(.top, 100)
     }
@@ -131,23 +138,25 @@ struct CreatorsView: View {
                     emptyStateView
                 } else {
                     LazyVGrid(columns: [
-                        GridItem(.adaptive(minimum: 300, maximum: 400), spacing: 40)
+                        GridItem(.flexible(), spacing: 40),
+                        GridItem(.flexible(), spacing: 40),
+                        GridItem(.flexible(), spacing: 40)
                     ], spacing: 40) {
                         ForEach(viewModel.campaigns) { campaign in
-                            CreatorCardView(campaign: campaign)
-                                .onTapGesture {
-                                    selectedCampaign = campaign
-                                }
+                            CreatorCardView(campaign: campaign) {
+                                selectedCampaign = campaign
+                            }
                         }
                     }
-                    .padding(60)
+                    .padding(.horizontal, 80)
+                    .padding(.vertical, 60)
                 }
             }
             .navigationTitle("Creators You Support")
             .refreshable {
                 await viewModel.loadCreators()
             }
-            .sheet(item: $selectedCampaign) { campaign in
+            .fullScreenCover(item: $selectedCampaign) { campaign in
                 CreatorDetailView(campaign: campaign)
             }
         }
@@ -156,15 +165,16 @@ struct CreatorsView: View {
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 80))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 60))
+                .foregroundStyle(PatreonColors.textTertiary)
 
             Text("No creators found")
-                .font(.title2)
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(PatreonColors.textPrimary)
 
             Text("Creators you support on Patreon will appear here")
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 22))
+                .foregroundStyle(PatreonColors.textSecondary)
         }
         .padding(.top, 100)
     }

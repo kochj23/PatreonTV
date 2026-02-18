@@ -16,6 +16,11 @@ import Network
 struct PatreonTVApp: App {
     @StateObject private var authManager = AuthManager.shared
 
+    init() {
+        // Force-initialize the debug logger at launch so the file exists
+        DebugLog.shared.log("App launched")
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

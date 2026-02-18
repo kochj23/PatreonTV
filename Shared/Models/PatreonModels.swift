@@ -137,15 +137,29 @@ struct PatreonPost: Codable, Identifiable {
         case text = "text_only"
         case image = "image_file"
         case video = "video_embed"
+        case videoFile = "video_external_file"
         case audio = "audio_file"
+        case audioEmbed = "audio_embed"
         case link = "link"
         case poll = "poll"
+        case livestream = "livestream"
+        case livestreamYoutube = "livestream_youtube"
         case unknown
 
         init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
             let value = try container.decode(String.self)
             self = PostType(rawValue: value) ?? .unknown
+        }
+
+        /// Whether this type represents video content
+        var isVideoType: Bool {
+            self == .video || self == .videoFile || self == .livestream || self == .livestreamYoutube
+        }
+
+        /// Whether this type represents audio content
+        var isAudioType: Bool {
+            self == .audio || self == .audioEmbed
         }
     }
 
@@ -238,7 +252,9 @@ struct PatreonPost: Codable, Identifiable {
             return title
         }
         switch postType {
-        case .video: return "Video Post"
+        case .video, .livestreamYoutube: return "Video Post"
+        case .videoFile: return "Video Post"
+        case .livestream: return "Livestream"
         case .audio: return "Audio Post"
         case .image: return "Image Post"
         case .link: return "Link Post"
@@ -265,11 +281,11 @@ struct PatreonPost: Codable, Identifiable {
 
     /// Check if post has playable media
     var hasVideo: Bool {
-        videoURL != nil || embedURL != nil || postType == .video
+        videoURL != nil || embedURL != nil || postType.isVideoType
     }
 
     var hasAudio: Bool {
-        audioURL != nil || postType == .audio
+        audioURL != nil || postType.isAudioType
     }
 }
 

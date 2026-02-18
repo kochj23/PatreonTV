@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		090B06BE3D026816B287DE11 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B919B51DA2B62CF8808C4C8 /* HomeView.swift */; };
 		18683CAB62AFADCA980B7568 /* RelayServerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */; };
+		FC4CF2720AD859D433247D24 /* MediaProxyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225D1CCFAD178BF3942EEC41 /* MediaProxyService.swift */; };
 		373E0AF118B44CBFF1CE7CFB /* PatreonTVRelayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E265940D34D6156AAB24F81 /* PatreonTVRelayApp.swift */; };
 		3EE2E57975B5E53CC9773000 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9BFBD2030A1FC37B573F1D /* ContentView.swift */; };
 		7427D2E84613966F2DCCC61E /* PatreonTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7843B2F523D1BC270E97593F /* PatreonTVApp.swift */; };
@@ -20,7 +21,13 @@
 		AD022F29EBC294D2570D1F7F /* PatreonAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */; };
 		AD27CE475AA7F2D16257A537 /* PatreonModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430C4FE9D52BF6E4960D2C46 /* PatreonModels.swift */; };
 		B7CBD9F84CAA95FE8F78EC64 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CBFF9ECA0DC7BF4B9BC0914 /* PostDetailView.swift */; };
+		B8C9D0E1F2A3B4C5D6E7F8A0 /* GlassmorphicBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8C9D0E1F2A3B5 /* GlassmorphicBackground.swift */; };
 		C64E22F897738216DFD06E52 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265324CE54AF92DCBC426326 /* PairingView.swift */; };
+		C9D0E1F2A3B4C5D6E7F8A9B1 /* GlassmorphicBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8C9D0E1F2A3B5 /* GlassmorphicBackground.swift */; };
+		D4E5F6A7B8C9D0E1F2A3B4C6 /* PatreonColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* PatreonColors.swift */; };
+		E5F6A7B8C9D0E1F2A3B4C5D7 /* PatreonColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* PatreonColors.swift */; };
+		F6A7B8C9D0E1F2A3B4C5D6E8 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A7B8C9D0E1F3A4 /* GlassCard.swift */; };
+		A7B8C9D0E1F2A3B4C5D6E7F9 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A7B8C9D0E1F3A4 /* GlassCard.swift */; };
 		F9AFCD8AACA7C63A69455871 /* PatreonAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +35,9 @@
 		265324CE54AF92DCBC426326 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		2CBFF9ECA0DC7BF4B9BC0914 /* PostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostDetailView.swift; sourceTree = "<group>"; };
 		3AD8A95DF4B6DFEA8A34C1E0 /* PatreonAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonAPI.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* PatreonColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonColors.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A7B8C9D0E1F3A4 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
+		C3D4E5F6A7B8C9D0E1F2A3B5 /* GlassmorphicBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassmorphicBackground.swift; sourceTree = "<group>"; };
 		3C0BADD832FC175F8A37150C /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardView.swift; sourceTree = "<group>"; };
 		430C4FE9D52BF6E4960D2C46 /* PatreonModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonModels.swift; sourceTree = "<group>"; };
 		4B9BFBD2030A1FC37B573F1D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -36,6 +46,7 @@
 		5E265940D34D6156AAB24F81 /* PatreonTVRelayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonTVRelayApp.swift; sourceTree = "<group>"; };
 		6FBB79DC2F7A8BA261AECBAF /* PatreonTV_Relay.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PatreonTV_Relay.entitlements; sourceTree = "<group>"; };
 		7843B2F523D1BC270E97593F /* PatreonTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatreonTVApp.swift; sourceTree = "<group>"; };
+		225D1CCFAD178BF3942EEC41 /* MediaProxyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaProxyService.swift; sourceTree = "<group>"; };
 		8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayServerManager.swift; sourceTree = "<group>"; };
 		9B919B51DA2B62CF8808C4C8 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		D8DE17B9ED0E754A47A81AD0 /* CreatorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatorViews.swift; sourceTree = "<group>"; };
@@ -80,6 +91,7 @@
 		22F1C9B8CBB8E840AEF8C5B1 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				225D1CCFAD178BF3942EEC41 /* MediaProxyService.swift */,
 				8FEC352A837E8337A9FE24C6 /* RelayServerManager.swift */,
 			);
 			path = Services;
@@ -140,10 +152,21 @@
 		A97BAC3C68B80EA346EAF6AE /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				D0E1F2A3B4C5D6E7F8A9B0C2 /* Design */,
 				9DCD4A909141BA323FA972DD /* Models */,
 				24B1A4C62F3F73BBA68D6844 /* Services */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		D0E1F2A3B4C5D6E7F8A9B0C2 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				B2C3D4E5F6A7B8C9D0E1F3A4 /* GlassCard.swift */,
+				C3D4E5F6A7B8C9D0E1F2A3B5 /* GlassmorphicBackground.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* PatreonColors.swift */,
+			);
+			path = Design;
 			sourceTree = "<group>";
 		};
 		C6781556E05E74DF1F6245DD /* Resources */ = {
@@ -281,9 +304,12 @@
 			files = (
 				3EE2E57975B5E53CC9773000 /* ContentView.swift in Sources */,
 				80796BEA8A429FEA4B42E21D /* CreatorViews.swift in Sources */,
+				F6A7B8C9D0E1F2A3B4C5D6E8 /* GlassCard.swift in Sources */,
+				B8C9D0E1F2A3B4C5D6E7F8A0 /* GlassmorphicBackground.swift in Sources */,
 				090B06BE3D026816B287DE11 /* HomeView.swift in Sources */,
 				C64E22F897738216DFD06E52 /* PairingView.swift in Sources */,
 				AD022F29EBC294D2570D1F7F /* PatreonAPI.swift in Sources */,
+				D4E5F6A7B8C9D0E1F2A3B4C6 /* PatreonColors.swift in Sources */,
 				914CDADD8BD6AD1DC5020550 /* PatreonModels.swift in Sources */,
 				7427D2E84613966F2DCCC61E /* PatreonTVApp.swift in Sources */,
 				8D2669DD8EBDC5FC292AD5E0 /* PostCardView.swift in Sources */,
@@ -295,9 +321,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7B8C9D0E1F2A3B4C5D6E7F9 /* GlassCard.swift in Sources */,
+				C9D0E1F2A3B4C5D6E7F8A9B1 /* GlassmorphicBackground.swift in Sources */,
 				F9AFCD8AACA7C63A69455871 /* PatreonAPI.swift in Sources */,
+				E5F6A7B8C9D0E1F2A3B4C5D7 /* PatreonColors.swift in Sources */,
 				AD27CE475AA7F2D16257A537 /* PatreonModels.swift in Sources */,
 				373E0AF118B44CBFF1CE7CFB /* PatreonTVRelayApp.swift in Sources */,
+				FC4CF2720AD859D433247D24 /* MediaProxyService.swift in Sources */,
 				18683CAB62AFADCA980B7568 /* RelayServerManager.swift in Sources */,
 				8E6B48B572BD0AF70A20ABCD /* RelayServerView.swift in Sources */,
 				AA0000000000000000000002 /* PatreonLoginView.swift in Sources */,

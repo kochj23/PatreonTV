@@ -107,6 +107,7 @@ No manual IP configuration required.
 
 ## Security
 
+- **App Transport Security Enforced**: NSAllowsArbitraryLoads disabled on both tvOS and macOS targets; only local networking permitted via NSAllowsLocalNetworking
 - **Local Network Only**: The Relay server only runs on your local network
 - **No Cloud Services**: All authentication and media streaming happens between your devices
 - **Secure Storage**: Session tokens are stored in the Apple TV's Keychain

@@ -27,9 +27,9 @@ PatreonTV is a native Apple TV app that lets you browse and watch content from P
 - Local HTTP server running on your Mac (port 8080)
 - Handles QR code authentication flow with native WebView login
 - **Media proxy server** — streams video/audio to Apple TV
-- Resolves Patreon CDN redirects with session authentication
+- Resolves Patreon CDN (Content Delivery Network) redirects with session authentication
 - Extracts YouTube/Vimeo stream URLs via yt-dlp (with anti-detection)
-- Caches resolved URLs (5-minute TTL) to minimize latency on seek
+- Caches resolved URLs with a 5-minute TTL (Time to Live) to minimize latency on seek
 - Dashboard shows active streams, bytes proxied, yt-dlp status, and cache stats
 - No data leaves your local network
 

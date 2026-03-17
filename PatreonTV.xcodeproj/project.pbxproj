@@ -12,6 +12,7 @@
 		366AEDB6D37F999F7015EBAE /* AIBackendManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54D468E0D132017392C46FB0 /* AIBackendManager.swift */; };
 		373E0AF118B44CBFF1CE7CFB /* PatreonTVRelayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E265940D34D6156AAB24F81 /* PatreonTVRelayApp.swift */; };
 		3EE2E57975B5E53CC9773000 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9BFBD2030A1FC37B573F1D /* ContentView.swift */; };
+		45376B70485D7DC663C230B2 /* NovaAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD88298D830823076FABF015 /* NovaAPIServer.swift */; };
 		7427D2E84613966F2DCCC61E /* PatreonTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7843B2F523D1BC270E97593F /* PatreonTVApp.swift */; };
 		80796BEA8A429FEA4B42E21D /* CreatorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8DE17B9ED0E754A47A81AD0 /* CreatorViews.swift */; };
 		8D2669DD8EBDC5FC292AD5E0 /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0BADD832FC175F8A37150C /* PostCardView.swift */; };
@@ -93,6 +94,7 @@
 		E567F0628DD1A3055508A8A9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EB71318F4FF189945A1B2BBA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F4ECAA1E045615104D57BEE9 /* PatreonTV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PatreonTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD88298D830823076FABF015 /* NovaAPIServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaAPIServer.swift; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -161,6 +163,7 @@
 				D9A40A223718E079029C3E40 /* Services */,
 				778A56A11F45DC76B91D1E7F /* ViewModels */,
 				07451C17A1C92855A572AC4E /* Views */,
+				FD88298D830823076FABF015 /* NovaAPIServer.swift */,
 			);
 			path = PatreonTV;
 			sourceTree = "<group>";
@@ -412,6 +415,7 @@
 				BB0000000000000000000001 /* PlaybackProgressManager.swift in Sources */,
 				366AEDB6D37F999F7015EBAE /* AIBackendManager.swift in Sources */,
 				8D48206227EA7DE420CCFA2F /* AIBackendStatusMenu.swift in Sources */,
+				45376B70485D7DC663C230B2 /* NovaAPIServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

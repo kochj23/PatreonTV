@@ -17,6 +17,7 @@ struct PatreonTVApp: App {
     @StateObject private var authManager = AuthManager.shared
 
     init() {
+        NovaAPIServer.shared.start()
         // Force-initialize the debug logger at launch so the file exists
         DebugLog.shared.log("App launched")
     }

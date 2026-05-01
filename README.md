@@ -4,7 +4,8 @@
 ![Platform: tvOS 17+](https://img.shields.io/badge/platform-tvOS%2017%2B-black)
 ![Platform: macOS 14+](https://img.shields.io/badge/platform-macOS%2014%2B-blue)
 ![Swift 5](https://img.shields.io/badge/Swift-5-orange)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Tests](https://img.shields.io/badge/tests-30%20cases-brightgreen)
 
 Watch your favorite Patreon creators on Apple TV.
 
@@ -357,6 +358,74 @@ curl http://127.0.0.1:37440/api/status
 ```
 
 The API server starts automatically when the app launches.
+
+---
+
+## Architecture (Mermaid)
+
+```mermaid
+graph TD
+    subgraph Apple TV
+        A[PatreonTVApp] --> B[ContentView]
+        B --> C[HomeView]
+        B --> D[PairingView]
+        C --> E[PostCardView]
+        C --> F[PostDetailView]
+        C --> G[CreatorViews]
+        F --> H[AVPlayer]
+        A --> I[NovaAPIServer<br>port 37440]
+        J[Top Shelf Extension] -.-> K[(App Group)]
+        A --> K
+        L[PlaybackProgressManager] --> M[(UserDefaults)]
+    end
+
+    subgraph Mac Relay
+        N[PatreonTV Relay] --> O[RelayServerManager<br>port 8080]
+        N --> P[MediaProxyService]
+        N --> Q[PatreonLoginView]
+        P --> R[yt-dlp subprocess]
+    end
+
+    subgraph Shared
+        S[PatreonModels]
+        T[PatreonAPI]
+        U[PatreonColors / GlassCard]
+    end
+
+    A -.->|Bonjour / Subnet Scan| O
+    D -->|QR Code Pair| O
+    T -->|Patreon Web API| V((Patreon))
+    F -->|/api/media/stream| P
+    P -->|CDN proxy / 302 redirect| H
+
+    style A fill:#0d1117,stroke:#f96854,color:#f96854
+    style O fill:#0d1117,stroke:#f96854,color:#f96854
+    style I fill:#0d1117,stroke:#ff6b6b,color:#ff6b6b
+```
+
+---
+
+## Testing
+
+The test suite (`PatreonTVTests`) validates data models, parsing, codable conformance, and security. Run tests via Xcode or the command line:
+
+```bash
+xcodebuild test -scheme PatreonTV -sdk appletvsimulator -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)'
+```
+
+### Test Coverage
+
+| Category | Tests | What's Covered |
+|----------|-------|----------------|
+| **PatreonUser** | 3 | Initialization, full decoding, missing-field defaults |
+| **PatreonCampaign** | 3 | Initialization, missing-name fallback, full decoding |
+| **PatreonPost** | 5 | Initialization, displayTitle fallback, previewText (HTML strip, truncation), media detection, PostType classification |
+| **PatreonAttachment** | 4 | Image/video/audio detection via mediaType, nil safety |
+| **PairingSession** | 5 | Code generation (length, no confusable chars, uniqueness), expiry logic, initial state |
+| **AnyCodable** | 4 | String, Int, Bool, Double round-trip encoding |
+| **Pagination** | 2 | Full and empty pagination decoding |
+| **Security** | 4 | No hardcoded API keys, loopback-only API, pairing code safety, no tokens in UserDefaults |
+| **Total** | **30** | |
 
 ---
 

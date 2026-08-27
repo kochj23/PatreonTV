@@ -11,6 +11,7 @@
 
 import Foundation
 import Network
+import Security
 
 /// Manages the relay HTTP server
 @MainActor
@@ -31,14 +32,16 @@ class RelayServerManager: ObservableObject {
     @Published var activeStreamCount: Int = 0
     @Published var totalBytesProxied: UInt64 = 0
 
-    // Persistent Patreon session — stored on the relay, used for all API calls
+    // Persistent Patreon session — stored on the relay, used for all API calls.
+    // The session_id cookie is full account access, so it lives in the macOS
+    // Keychain (never plaintext UserDefaults).
     @Published var patreonSessionID: String? {
         didSet {
             if let sid = patreonSessionID {
-                UserDefaults.standard.set(sid, forKey: "patreon_session_id")
+                Self.saveSessionToKeychain(sid)
                 log("Patreon session stored on relay", type: .success)
             } else {
-                UserDefaults.standard.removeObject(forKey: "patreon_session_id")
+                Self.deleteSessionFromKeychain()
             }
         }
     }
@@ -82,13 +85,63 @@ class RelayServerManager: ObservableObject {
         allLocalIPs = getAllLocalIPAddresses()
         localIP = allLocalIPs.first ?? "127.0.0.1"
 
-        // Restore persisted Patreon session
-        if let storedSession = UserDefaults.standard.string(forKey: "patreon_session_id"), !storedSession.isEmpty {
+        // One-time migration: move any legacy plaintext session out of
+        // UserDefaults and into the Keychain, then delete the defaults key.
+        if let legacy = UserDefaults.standard.string(forKey: "patreon_session_id"), !legacy.isEmpty {
+            Self.saveSessionToKeychain(legacy)
+            UserDefaults.standard.removeObject(forKey: "patreon_session_id")
+            print("[RelayServer] Migrated Patreon session from UserDefaults to Keychain")
+        }
+
+        // Restore persisted Patreon session from the Keychain
+        if let storedSession = Self.loadSessionFromKeychain(), !storedSession.isEmpty {
             patreonSessionID = storedSession
-            print("[RelayServer] Restored Patreon session from disk: \(storedSession.prefix(20))...")
+            print("[RelayServer] Restored Patreon session from Keychain: \(storedSession.prefix(20))...")
             // Validate the stored session
             Task { await validatePatreonSession() }
         }
+    }
+
+    // MARK: - Keychain Storage
+
+    /// Keychain service under which the Patreon session cookie is stored.
+    private static let keychainService = "com.jordankoch.PatreonTVRelay"
+    private static let keychainAccount = "patreon_session_id"
+
+    private static func saveSessionToKeychain(_ value: String) {
+        guard let data = value.data(using: .utf8) else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ]
+        SecItemDelete(query as CFDictionary)
+        SecItemAdd(query as CFDictionary, nil)
+    }
+
+    private static func loadSessionFromKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func deleteSessionFromKeychain() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     /// Validate the stored Patreon session by calling the Patreon API
@@ -404,10 +457,10 @@ class RelayServerManager: ObservableObject {
             sendResponse(connection: connection, status: "200 OK", body: "PatreonTV Relay Server Running")
 
         case ("GET", "/health"):
-            let sessionStatus = patreonSessionValid ? "valid" : (patreonSessionID != nil ? "expired" : "none")
-            let userName = patreonUserName ?? ""
+            // Unauthenticated liveness probe — must not leak the logged-in
+            // user's name or session state to anyone on the network.
             sendResponse(connection: connection, status: "200 OK", contentType: "application/json",
-                         body: "{\"status\":\"ok\",\"session\":\"\(sessionStatus)\",\"user\":\"\(userName)\"}")
+                         body: "{\"status\":\"ok\"}")
 
         case ("GET", "/api/session/status"):
             handleSessionStatus(connection: connection)
@@ -551,7 +604,6 @@ class RelayServerManager: ObservableObject {
         var response = "HTTP/1.1 \(status)\r\n"
         response += "Content-Type: \(contentType)\r\n"
         response += "Content-Length: \(body.utf8.count)\r\n"
-        response += "Access-Control-Allow-Origin: *\r\n"
         response += "Connection: close\r\n"
         response += "\r\n"
         response += body
@@ -566,7 +618,6 @@ class RelayServerManager: ObservableObject {
     private func sendRedirect(connection: NWConnection, location: String) {
         var response = "HTTP/1.1 302 Found\r\n"
         response += "Location: \(location)\r\n"
-        response += "Access-Control-Allow-Origin: *\r\n"
         response += "Connection: close\r\n"
         response += "Content-Length: 0\r\n"
         response += "\r\n"
@@ -927,10 +978,25 @@ class RelayServerManager: ObservableObject {
             }
         }
 
-        // Session ID priority: relay's stored session > header > query param
-        let sessionID = patreonSessionID ?? headers["x-session-id"] ?? queryParams["sid"]
-
-        guard let sessionID = sessionID, !sessionID.isEmpty else {
+        // Authenticate the caller. The relay's stored Patreon session is the
+        // paired user's full account access, so we must not proxy media with it
+        // for just anyone who can reach the port. The paired Apple TV always
+        // presents the same session token (x-session-id header or ?sid=), so we
+        // require the caller to prove knowledge of it before using the stored
+        // session. This blocks arbitrary LAN/web clients from driving the proxy.
+        let presentedSession = headers["x-session-id"] ?? queryParams["sid"]
+        let sessionID: String
+        if let relaySession = patreonSessionID {
+            guard let presented = presentedSession, presented == relaySession else {
+                sendResponse(connection: connection, status: "401 Unauthorized",
+                             contentType: "application/json", body: "{\"error\":\"Unauthorized. Re-pair your Apple TV.\"}")
+                return
+            }
+            sessionID = relaySession
+        } else if let presented = presentedSession, !presented.isEmpty {
+            // No stored session — fall back to the caller's own session token.
+            sessionID = presented
+        } else {
             sendResponse(connection: connection, status: "401 Unauthorized",
                          contentType: "application/json", body: "{\"error\":\"No Patreon session. Please log in via the relay dashboard or re-pair your Apple TV.\"}")
             return
@@ -957,17 +1023,17 @@ class RelayServerManager: ObservableObject {
                 // Use URLs passed directly from the Apple TV (from feed data)
                 // This avoids needing to re-fetch the post from Patreon API (which can return 403)
                 if let embedStr = embedURL {
-                    let lower = embedStr.lowercased()
-                    if lower.contains("youtube.com") || lower.contains("youtu.be") {
-                        log("YouTube embed detected, running yt-dlp...", type: .info)
+                    // Route on a proper host-suffix match (never a substring
+                    // match) so only genuine youtube.com/youtu.be/vimeo.com URLs
+                    // reach the yt-dlp subprocess. extractWithYtdlp additionally
+                    // re-validates scheme/host before spawning the process.
+                    let embedHost = URLComponents(string: embedStr)?.host
+                    if let host = embedHost, MediaProxyService.isAllowedYtdlpHost(host) {
+                        let isVimeo = MediaProxyService.hostMatchesSuffix(host, "vimeo.com")
+                        log("\(isVimeo ? "Vimeo" : "YouTube") embed detected, running yt-dlp...", type: .info)
                         resolvedURL = try await mediaProxy.extractWithYtdlp(urlString: embedStr)
-                        source = .youtube
-                        useRedirect = true  // YouTube returns HLS — let AVPlayer handle directly
-                    } else if lower.contains("vimeo.com") {
-                        log("Vimeo embed detected, running yt-dlp...", type: .info)
-                        resolvedURL = try await mediaProxy.extractWithYtdlp(urlString: embedStr)
-                        source = .vimeo
-                        useRedirect = true  // Vimeo may also use HLS
+                        source = isVimeo ? .vimeo : .youtube
+                        useRedirect = true  // YouTube/Vimeo return HLS — let AVPlayer handle directly
                     } else if let url = URL(string: embedStr) {
                         resolvedURL = url
                         source = .directURL
@@ -1150,7 +1216,6 @@ private class MediaStreamDelegate: NSObject, URLSessionDataDelegate {
             }
         }
 
-        responseHeader += "Access-Control-Allow-Origin: *\r\n"
         responseHeader += "Connection: close\r\n"
         responseHeader += "\r\n"
 
@@ -1193,7 +1258,7 @@ private class MediaStreamDelegate: NSObject, URLSessionDataDelegate {
                 logHandler("Upstream error: \(error.localizedDescription)", .warning)
             }
             if !headersSent {
-                let errorResponse = "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n{\"error\":\"Upstream request failed\"}"
+                let errorResponse = "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"error\":\"Upstream request failed\"}"
                 connection.send(content: errorResponse.data(using: .utf8), completion: .contentProcessed { _ in })
             }
         }

@@ -307,20 +307,16 @@ class MediaProxyService: ObservableObject {
             return (resolved, .patreonCDN)
         }
 
-        // 3. Embed URL — YouTube/Vimeo use yt-dlp, others try direct
+        // 3. Embed URL — YouTube/Vimeo use yt-dlp, others try direct.
+        // Route on a proper host-suffix match (never a substring match) so a
+        // hostile string cannot be steered into the yt-dlp subprocess path.
         if let embedURLStr = postData.embedURL {
-            let lower = embedURLStr.lowercased()
-
-            if lower.contains("youtube.com") || lower.contains("youtu.be") {
-                print("[MediaProxy] YouTube embed detected, running yt-dlp...")
+            if let host = URLComponents(string: embedURLStr)?.host,
+               Self.isAllowedYtdlpHost(host) {
+                let isVimeo = Self.hostMatchesSuffix(host, "vimeo.com")
+                print("[MediaProxy] \(isVimeo ? "Vimeo" : "YouTube") embed detected, running yt-dlp...")
                 let directURL = try await extractWithYtdlp(urlString: embedURLStr)
-                return (directURL, .youtube)
-            }
-
-            if lower.contains("vimeo.com") {
-                print("[MediaProxy] Vimeo embed detected, running yt-dlp...")
-                let directURL = try await extractWithYtdlp(urlString: embedURLStr)
-                return (directURL, .vimeo)
+                return (directURL, isVimeo ? .vimeo : .youtube)
             }
 
             // Try as direct URL
@@ -377,6 +373,38 @@ class MediaProxyService: ObservableObject {
         }
     }
 
+    // MARK: - yt-dlp URL Validation
+
+    /// Host suffixes we are willing to hand to the yt-dlp subprocess.
+    private static let ytdlpAllowedHostSuffixes = ["youtube.com", "youtu.be", "vimeo.com"]
+
+    /// True only when `host` equals `suffix` or ends with ".suffix" — a proper
+    /// domain-suffix match, never a substring match (so "youtube.com.evil.tld"
+    /// and "evil.com/youtube.com" are both rejected).
+    static func hostMatchesSuffix(_ host: String, _ suffix: String) -> Bool {
+        let h = host.lowercased()
+        return h == suffix || h.hasSuffix("." + suffix)
+    }
+
+    /// True if `host` is one of the allowed video hosts (proper suffix match).
+    static func isAllowedYtdlpHost(_ host: String) -> Bool {
+        ytdlpAllowedHostSuffixes.contains { hostMatchesSuffix(host, $0) }
+    }
+
+    /// Validate that an embed URL is a plain https URL on an allowed video host
+    /// before it is passed to yt-dlp. Rejects anything that could be interpreted
+    /// as a yt-dlp option (e.g. "--config-location=...", "--exec=...") or that
+    /// points at an unexpected scheme/host. Throws on rejection.
+    static func validatedYtdlpURL(from urlString: String) throws -> URL {
+        guard let components = URLComponents(string: urlString),
+              components.scheme?.lowercased() == "https",
+              let host = components.host, isAllowedYtdlpHost(host),
+              let url = components.url else {
+            throw MediaProxyError.ytdlpFailed("Rejected unsafe embed URL")
+        }
+        return url
+    }
+
     // MARK: - yt-dlp Extraction
 
     // MARK: - User Agent Rotation (Anti-Detection)
@@ -406,6 +434,11 @@ class MediaProxyService: ObservableObject {
             throw MediaProxyError.ytdlpNotInstalled
         }
 
+        // Validate scheme + host before spawning the subprocess. This rejects
+        // any attempt to smuggle yt-dlp options through the embed URL.
+        let validatedURL = try Self.validatedYtdlpURL(from: urlString)
+        let safeURLString = validatedURL.absoluteString
+
         let userAgent = randomUserAgent()
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -421,7 +454,8 @@ class MediaProxyService: ObservableObject {
                     "--no-check-certificates",               // Avoid cert issues
                     "--no-warnings",                         // Clean output
                     "--socket-timeout", "15",                // Don't hang forever
-                    urlString
+                    "--",                                    // End of options — the URL can never be read as a flag
+                    safeURLString
                 ]
 
                 let stdoutPipe = Pipe()
